@@ -52,7 +52,24 @@ let productoPesoActual = null; // producto que se está cargando en el modal de 
 let ventaUltima = null;
 
 // ---------- Helpers de producto ----------
-function esPorPeso(p) { return (p.tipo_unidad || 'unidad') === 'peso'; }
+// Unidades CONTINUAS: admiten fracciones y venta por importe ($). Se apoyan en
+// la misma mecánica (ver `_resolver_item` del backend). Fuente única de verdad
+// en el front: la lista. 'peso' se conserva por compatibilidad de nombre.
+const TIPOS_CONTINUOS = ['peso', 'metros', 'litros'];
+
+/** ¿El producto se vende por una unidad continua (kg / m / L)? */
+function esPorPeso(p) { return TIPOS_CONTINUOS.includes(p.tipo_unidad || 'unidad'); }
+
+/** ¿El producto es un servicio (librería: copia/impresión)? */
+function esServicio(p) { return (p.tipo_unidad || 'unidad') === 'servicio'; }
+
+/** Etiqueta corta de la unidad continua para textos de UI ('kg' | 'm' | 'L'). */
+function etiquetaUnidadContinua(p) {
+  const t = p.tipo_unidad || 'unidad';
+  if (t === 'metros') return 'm';
+  if (t === 'litros') return 'L';
+  return 'kg';
+}
 
 /**
  * Estado de stock para las tarjetas del catálogo:
@@ -77,6 +94,9 @@ function estadoStock(p) {
 function sufijoUnidadPrecio(p) {
   const t = p.tipo_unidad || 'unidad';
   if (t === 'peso') return '/kg';
+  if (t === 'metros') return '/m';
+  if (t === 'litros') return '/L';
+  if (t === 'servicio') return '/copia';
   if (t === 'porcion') return '/porción';
   return '/un.';
 }
@@ -89,9 +109,8 @@ function sufijoUnidadPrecio(p) {
  */
 function formatearStock(stock, tipo) {
   const n = Number(stock || 0);
-  return (tipo || 'unidad') === 'peso'
-    ? String(Number(n.toFixed(3)))
-    : String(Math.trunc(n));
+  const continuo = TIPOS_CONTINUOS.includes(tipo || 'unidad');
+  return continuo ? String(Number(n.toFixed(3))) : String(Math.trunc(n));
 }
 
 function unidadesDisponibles(linea) {
@@ -140,14 +159,17 @@ function renderCatalogo(productos, esFiltro = false) {
     return;
   }
 
-  productos.forEach((p) => {
+    productos.forEach((p) => {
     const pesos = esPorPeso(p);
+    const servicio = esServicio(p);
     const tipo = p.tipo_unidad || 'unidad';
     // Sufijo único del precio (evita duplicados tipo "/kgkg").
     const sufPrecio = sufijoUnidadPrecio(p);
     // Stock formateado según la unidad: "36" para unidad, "1.5" para peso.
     const stockTxt = formatearStock(p.stock, tipo);
     const stockEstado = estadoStock(p); // 'ok' | 'poco' | 'agotado'
+    // Servicios ilimitados (stock 0) nunca se marcan agotados.
+    const agotado = stockEstado === 'agotado' && !servicio;
 
     const card = document.createElement('button');
     card.type = 'button';
@@ -157,26 +179,27 @@ function renderCatalogo(productos, esFiltro = false) {
     // `min-w-0` evita que contenido largo (nombre/código) desborde su celda.
     card.className =
       'pos-card p-4 text-left min-w-0 h-full flex flex-col justify-between gap-2 hover:border-pos-primary hover:shadow-pos-primary transition-all ' +
-      (stockEstado === 'agotado' ? 'opacity-60 cursor-not-allowed' : '');
-    card.disabled = stockEstado === 'agotado';
+      (agotado ? 'opacity-60 cursor-not-allowed' : '');
+    card.disabled = agotado;
     card.innerHTML = `
       <div class="flex items-start justify-between gap-2 min-w-0">
         <h5 class="text-sm font-semibold text-pos-text-head min-w-0 flex-1 line-clamp-2">${p.nombre}</h5>
         <div class="flex flex-wrap justify-end gap-1 shrink-0">
           ${
-            stockEstado === 'poco'
+            !servicio && stockEstado === 'poco'
               ? '<span class="badge badge-warning">Poco Stock</span>'
-              : stockEstado === 'agotado'
+              : agotado
                 ? '<span class="badge badge-danger">Agotado</span>'
                 : ''
           }
-          ${pesos ? '<span class="badge badge-neutral">por peso</span>' : ''}
+          ${pesos ? '<span class="badge badge-neutral">por ' + etiquetaUnidadContinua(p) + '</span>' : ''}
+          ${servicio ? '<span class="badge badge-neutral">servicio</span>' : ''}
         </div>
       </div>
       <p class="text-pos-text-body/50 text-xs truncate min-w-0">${p.codigo_barras || 'Sin código'}</p>
       <div class="mt-auto flex items-baseline justify-between gap-2 min-w-0 flex-wrap">
         <span class="text-base font-bold text-pos-primary whitespace-nowrap">${money(p.precio)}<span class="text-xs font-normal text-pos-text-body/50">${sufPrecio}</span></span>
-        <span class="text-xs text-pos-text-body/50 whitespace-nowrap">stock: ${stockTxt}${pesos ? ' kg' : ''}</span>
+        <span class="text-xs text-pos-text-body/50 whitespace-nowrap">${servicio && Number(p.stock || 0) <= 0 ? 'ilimitado' : 'stock: ' + stockTxt + (pesos ? ' ' + etiquetaUnidadContinua(p) : '')}</span>
       </div>`;
     card.addEventListener('click', () => onSelectProducto(p));
     grid.appendChild(card);
@@ -185,6 +208,10 @@ function renderCatalogo(productos, esFiltro = false) {
 
 /** Acción al tocar una tarjeta de producto. */
 function onSelectProducto(p) {
+  if (esServicio(p)) {
+    abrirModalServicio(p);
+    return;
+  }
   if (esPorPeso(p)) {
     abrirModalPeso(p);
     return;
@@ -241,8 +268,9 @@ function focusInputDiferido(id, { seleccionar = false } = {}) {
 
 function abrirModalPeso(p) {
   productoPesoActual = p;
+  const u = etiquetaUnidadContinua(p);
   $('peso-modal-titulo').textContent = p.nombre;
-  $('peso-modal-precio').textContent = money(p.precio) + ' / kg   ·   stock: ' + p.stock + ' kg';
+  $('peso-modal-precio').textContent = `${money(p.precio)} / ${u}   ·   stock: ${formatearStock(p.stock, p.tipo_unidad)} ${u}`;
   $('peso-modo-cantidad').checked = true;
   $('peso-modo-importe').checked = false;
   $('peso-valor').value = '';
@@ -261,9 +289,10 @@ function actualizarPlaceholder() {
   const input = $('peso-valor');
   const esPorCantidad = $('peso-modo-cantidad').checked;
   const lbl = $('peso-valor-label');
+  const u = productoPesoActual ? etiquetaUnidadContinua(productoPesoActual) : 'kg';
   if (esPorCantidad) {
-    lbl.textContent = 'Cantidad (kg)';
-    input.placeholder = 'Ej: 1.500';
+    lbl.textContent = `Cantidad (${u})`;
+    input.placeholder = `Ej: 1.500`;
     input.step = '0.001';
   } else {
     lbl.textContent = 'Importe ($)';
@@ -297,11 +326,12 @@ function agregarPeso(mode) {
     return;
   }
 
-  // stock disponible en kg (peso) — aprox. al derivar importe (kg = imp/precio)
+    // stock disponible en la unidad continua (kg/m/L) — aprox. al derivar importe
   const disponible = Number(p.stock || 0);
-  const modoModo = mode; // 'cantidad' (kg) | 'importe' ($)
+  const u = etiquetaUnidadContinua(p);
+  const modoModo = mode; // 'cantidad' (kg/m/L) | 'importe' ($)
   if (modoModo === 'cantidad' && valor > disponible) {
-    mostrarAlerta(`Stock insuficiente: máximo disponible ${disponible} kg.`, 'warn', FOCO_VALOR);
+    mostrarAlerta(`Stock insuficiente: máximo disponible ${disponible} ${u}.`, 'warn', FOCO_VALOR);
     return;
   }
   // validación de alcance: importe no puede superar valor unitario del stock disponible
@@ -335,7 +365,86 @@ function agregarPeso(mode) {
     carrito.push(linea);
   }
 
-  cerrarModalPeso();
+    cerrarModalPeso();
+  renderCarrito();
+}
+
+// ---- SERVICIOS (librería: copia/impresión) ----
+
+/** Producto de servicio que se está configurando en el modal. */
+let productoServicioActual = null;
+
+/**
+ * Abre el modal de servicio/copia. Precarga las variantes de impresión
+ * definidas en el inventario del producto (tipo_papel, color_bn) y deja el
+ * foco en el input de cantidad para tipeo rápido (requisito del POS).
+ */
+function abrirModalServicio(p) {
+  productoServicioActual = p;
+  $('servicio-modal-titulo').textContent = p.nombre;
+  const stockTxt = Number(p.stock || 0) > 0 ? `stock: ${formatearStock(p.stock, p.tipo_unidad)}` : 'ilimitado';
+  $('servicio-modal-precio').textContent = `${money(p.precio)} / copia   ·   ${stockTxt}`;
+  $('servicio-cantidad').value = '1';
+  // Variantes por defecto del producto (fallback a los primeros del select).
+  const papel = $('servicio-papel');
+  if (papel) papel.value = p.tipo_papel || 'A4';
+  const bn = $('servicio-bn');
+  if (bn) bn.value = p.color_bn || 'B/N';
+
+  const m = $('modal-servicio');
+  m.classList.remove('hidden');
+  m.classList.add('flex');
+  // Auto-focus + select tras el reflow (mismo helper que el modal de peso).
+  focusInputDiferido('servicio-cantidad', { seleccionar: true });
+}
+
+function cerrarModalServicio() {
+  const m = $('modal-servicio');
+  if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+  productoServicioActual = null;
+}
+
+/** Agrega (o acumula) una línea de servicio/copia al carrito. */
+function agregarServicio() {
+  if (!productoServicioActual) return;
+  const p = productoServicioActual;
+  const cantidad = Math.floor(Number(($('servicio-cantidad').value || '').replace(',', '.')));
+  const FOCO = { focoDestino: 'servicio-cantidad' };
+
+  if (!cantidad || cantidad <= 0) {
+    mostrarAlerta('Ingresá una cantidad de copias mayor a cero.', 'error', FOCO);
+    return;
+  }
+  // Tope de stock SOLO si el producto lo controla (stock > 0).
+  const disponible = Number(p.stock || 0);
+  if (disponible > 0 && cantidad > disponible) {
+    mostrarAlerta(`Stock insuficiente: máximo ${formatearStock(disponible, p.tipo_unidad)} copias.`, 'warn', FOCO);
+    return;
+  }
+
+  // Variantes elegidas en esta venta (ajustables aunque el producto traiga un default).
+  const variante = {
+    tipo_papel: $('servicio-papel')?.value || null,
+    color_bn: $('servicio-bn')?.value || null,
+  };
+
+  // Una línea por producto (el backend rechaza productos repetidos). Si ya
+  // existe, acumula la cantidad y actualiza la variante elegida.
+  const idx = carrito.findIndex((l) => l.producto.id === p.id);
+  if (idx >= 0) {
+    const act = carrito[idx];
+    const nueva = (Number(act.cantidad) || 0) + cantidad;
+    if (disponible > 0 && nueva > disponible) {
+      mostrarAlerta(`Stock insuficiente: máximo ${formatearStock(disponible, p.tipo_unidad)} copias.`, 'warn', FOCO);
+      return;
+    }
+    act.cantidad = nueva;
+    act.variante = variante;
+  } else {
+    carrito.push({ producto: p, modo: 'servicio', cantidad, variante });
+  }
+
+  cerrarModalServicio();
   renderCarrito();
 }
 
@@ -400,8 +509,13 @@ function detalleLinea(linea) {
     const kg = cantidadLinea(linea).toFixed(3).replace(/\.?0+$/, '');
     return `${precioU}/kg · por importe → ≈ ${kg} kg`;
   }
+  if (linea.modo === 'servicio') {
+    const v = linea.variante || {};
+    const extra = [v.tipo_papel, v.color_bn].filter(Boolean).join(' · ');
+    return `${precioU}/copia × ${linea.cantidad} copia(s)${extra ? ' · ' + extra : ''}`;
+  }
   if (esPorPeso(p)) {
-    return `${precioU}/kg × ${linea.cantidad} kg`;
+    return `${precioU}/${etiquetaUnidadContinua(p)} × ${linea.cantidad} ${etiquetaUnidadContinua(p)}`;
   }
   return `${precioU} × ${linea.cantidad} ${p.tipo_unidad === 'porcion' ? 'porción(es)' : 'un.'}`;
 }
@@ -451,7 +565,10 @@ async function cobrar() {
     }
   }
 
-  // Construir items según esquema VentaItem: EXACTAMENTE cantidad O importe
+    // Construir items según esquema VentaItem: EXACTAMENTE cantidad O importe.
+  // Nota: la variante de impresión (papel/BN) del servicio es informativa para
+  // el ticket y NO se envía al backend (el precio del servicio ya la contempla);
+  // así evitamos persistir un dato cosmético (YAGNI aplicado al modelo).
   const items = carrito.map((linea) => {
     const base = { producto_id: linea.producto.id, descuento: 0 };
     if (linea.modo === 'importe') {
@@ -464,17 +581,26 @@ async function cobrar() {
   btn.disabled = true;
   btn.textContent = 'Procesando...';
 
-  const payload = { items, metodo_pago: metodoPago, cliente };
+    const payload = { items, metodo_pago: metodoPago, cliente };
   if (clienteId !== null) payload.cliente_id = clienteId;
 
   const total = carrito.reduce((acc, l) => acc + importeLinea(l), 0);
-  
+
+  // VALIDACIÓN ESTRICTA DEL MONTO (defensa en profundidad: el backend también
+  // valida). En efectivo, el monto abonado debe ser > 0 y >= total. Bloqueamos
+  // la petición al servidor y avisamos con un toast ANTES de construir el
+  // payload, evitando un viaje de red inútil y el descuadre de caja.
   if (metodoPago === 'efectivo') {
-      const pagaConStr = $('paga-con').value;
-      if (pagaConStr) {
-          payload.paga_con = Number(pagaConStr);
-          payload.vuelto = Math.max(0, payload.paga_con - total);
-      }
+    const pagaConStr = $('paga-con').value;
+    const montoAbonado = Number(pagaConStr);
+    if (!pagaConStr || !Number.isFinite(montoAbonado) || montoAbonado < total) {
+      btn.disabled = false;
+      btn.textContent = 'Cobrar venta';
+      mostrarAlerta('El monto ingresado no puede ser menor al total a pagar', 'error');
+      return;
+    }
+    payload.paga_con = montoAbonado;
+    payload.vuelto = Math.max(0, montoAbonado - total);
   }
 
   try {
@@ -821,9 +947,24 @@ async function init() {
     const mode = $('peso-modo-importe').checked ? 'importe' : 'cantidad';
     agregarPeso(mode);
   });
-  $('btn-peso-cancelar').addEventListener('click', cerrarModalPeso);
+    $('btn-peso-cancelar').addEventListener('click', cerrarModalPeso);
   const btnCancel2 = $('btn-peso-cancelar-2');
   if (btnCancel2) btnCancel2.addEventListener('click', cerrarModalPeso);
+
+  // Modal de SERVICIO (librería: copia/impresión).
+  $('btn-servicio-agregar')?.addEventListener('click', agregarServicio);
+  $('btn-servicio-cancelar')?.addEventListener('click', cerrarModalServicio);
+  const btnServCancel2 = $('btn-servicio-cancelar-2');
+  if (btnServCancel2) btnServCancel2.addEventListener('click', cerrarModalServicio);
+  // Enter en la cantidad del servicio = confirmar (ergonomía de teclado).
+  const servicioInput = $('servicio-cantidad');
+  if (servicioInput) {
+    servicioInput.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      agregarServicio();
+    });
+  }
 
   // Escáner / barcode: Enter simula el disparo de la pistola.
   // El listener está ACOTADO al input #pos-search (no es global), y sólo

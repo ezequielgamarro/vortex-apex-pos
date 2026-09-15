@@ -9,7 +9,7 @@
   "scripts": {
     "start": "electron .",
     "build:css": "npm --prefix frontend run build:css",
-    "build:backend": "app\\.venv\\Scripts\\python.exe -m PyInstaller --noconfirm pos-backend.spec",
+    "build:backend": "app\\.venv\\Scripts\\python.exe -m PyInstaller --noconfirm --clean pos-backend.spec",
     "build:full": "npm run build:css && npm run build:backend",
     "build:installer": "npm run build:full && electron-builder --win",
     "dist": "npm run build:installer",

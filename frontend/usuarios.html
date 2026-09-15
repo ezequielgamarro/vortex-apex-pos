@@ -62,13 +62,12 @@
                 <th>Nombre</th>
                 <th>Email</th>
                 <th>Rol</th>
-                <th>Rubro</th>
                 <th>Estado</th>
                 <th class="text-right">Acciones</th>
               </tr>
             </thead>
             <tbody id="tabla-usuarios">
-              <tr><td colspan="6" class="text-center text-pos-text-body/60 py-8">Cargando usuarios...</td></tr>
+              <tr><td colspan="5" class="text-center text-pos-text-body/60 py-8">Cargando usuarios...</td></tr>
             </tbody>
           </table>
         </div>
@@ -101,28 +100,30 @@
           <label class="form-label" for="u-password">Contraseña</label>
           <input id="u-password" type="password" class="form-input-pos" placeholder="Mínimo 6 caracteres" required>
         </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="form-label" for="u-rol">Rol</label>
-            <select id="u-rol" class="form-input-pos">
-              <option value="cajero">Cajero</option>
-              <option value="admin">Administrador</option>
-            </select>
-          </div>
-          <div>
-            <label class="form-label" for="u-rubro">Rubro del negocio</label>
-            <select id="u-rubro" class="form-input-pos">
-              <option value="general">General</option>
-              <option value="panaderia_alimentos">Panadería / Alimentos</option>
-              <option value="indumentaria">Indumentaria</option>
-              <option value="ferreteria">Ferretería</option>
-              <option value="libreria">Librería</option>
-            </select>
-          </div>
+        <div>
+          <label class="form-label" for="u-rol">Rol</label>
+          <select id="u-rol" class="form-input-pos">
+            <option value="cajero">Cajero</option>
+            <option value="admin">Administrador</option>
+          </select>
         </div>
-        <p class="text-xs text-pos-text-body/60">
-          El rubro define qué campos extra de inventario ve el usuario (talle/color para indumentaria, vencimientos para alimentos).
-        </p>
+        <!-- Rubro: SOLO visible para el SuperAdministrador. El JS muestra este
+             bloque condicionalmente según el perfil (es_superadmin). Para un
+             administrador estándar queda oculto y su valor NO se envía: el
+             backend hereda el rubro del comercio (el del SuperAdmin). -->
+        <div id="bloque-rubro" class="hidden">
+          <label class="form-label" for="u-rubro">Rubro del negocio</label>
+          <select id="u-rubro" class="form-input-pos">
+            <option value="general">General</option>
+            <option value="panaderia_alimentos">Panadería / Alimentos</option>
+            <option value="indumentaria">Indumentaria</option>
+            <option value="ferreteria">Ferretería</option>
+            <option value="libreria">Librería</option>
+          </select>
+          <p class="text-xs text-pos-text-body/60 mt-1">
+            Define qué campos extra de inventario ven los usuarios (talle/color, vencimientos).
+          </p>
+        </div>
         <div class="flex justify-end gap-3 mt-6">
           <button type="button" class="btn-secondary" data-close>Cancelar</button>
           <button type="submit" class="btn-primary">Crear usuario</button>

@@ -7,8 +7,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, ConfigDict
 
-# Unidades de venta soportadas. Debe coincidir con `Producto.TIPOS_UNIDAD`.
-TIPOS_UNIDAD = ("peso", "unidad", "porcion")
+from app.models import Producto
+
+# Unidades de venta soportadas. FUENTE ÚNICA: se derivan de `Producto` para que
+# modelo ORM y validación Pydantic no puedan divergir (DRY).
+TIPOS_UNIDAD = Producto.TIPOS_UNIDAD
+_PATTERN_TIPO_UNIDAD = "^(" + "|".join(Producto.TIPOS_UNIDAD) + ")$"
 
 
 class ProductoBase(BaseModel):
@@ -49,10 +53,22 @@ class ProductoBase(BaseModel):
     fecha_vencimiento: Optional[datetime] = Field(
         None, description="Fecha de vencimiento (perecibles)"
     )
+    # --- Variantes de impresión (librería: productos tipo 'servicio') ---
+    # Aplican SOLO cuando tipo_unidad == 'servicio' (copia/impresión). Nullable:
+    # el resto de rubros/productos las ignoran. Columnas dedicadas (semántica
+    # limpia en vez de reutilizar talle/color — ver Producto en app.models).
+    tipo_papel: Optional[str] = Field(
+        None, max_length=40, description="Tipo de papel (librería/servicio)"
+    )
+    color_bn: Optional[str] = Field(
+        None, max_length=20, description="Color o B/N (librería/servicio)"
+    )
     tipo_unidad: str = Field(
         "unidad",
-        pattern="^(peso|unidad|porcion)$",
-        description="Unidad de venta: peso | unidad | porcion",
+        pattern=_PATTERN_TIPO_UNIDAD,
+        description=(
+            "Unidad de venta: peso | unidad | porcion | metros | litros | servicio"
+        ),
     )
     activo: bool = Field(True, description="Si el producto está activo para la venta")
 
@@ -77,8 +93,10 @@ class ProductoUpdate(BaseModel):
     talle: Optional[str] = Field(None, max_length=40)
     color: Optional[str] = Field(None, max_length=40)
     fecha_vencimiento: Optional[datetime] = Field(None)
+    tipo_papel: Optional[str] = Field(None, max_length=40)
+    color_bn: Optional[str] = Field(None, max_length=20)
     tipo_unidad: Optional[str] = Field(
-        None, pattern="^(peso|unidad|porcion)$", description="Unidad de venta"
+        None, pattern=_PATTERN_TIPO_UNIDAD, description="Unidad de venta"
     )
     activo: Optional[bool] = None
 

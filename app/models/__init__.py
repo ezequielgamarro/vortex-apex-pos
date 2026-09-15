@@ -56,12 +56,30 @@ class Producto(Base):
     __tablename__ = "productos"
 
     # Tipo de unidad de venta / medición del producto.
-    #   - 'unidad' : se vende por pieza entera. stock en unidades.
-    #   - 'peso'   : se vende por peso (kg) de forma continua; admite venta
-    #                por importe ($) y se descuenta la fracción de stock
-    #                exacta equivalente (stock en kg).
-    #   - 'porcion': se vende por porción/preparación.
-    TIPOS_UNIDAD = ("peso", "unidad", "porcion")
+    #   - 'unidad'  : se vende por pieza entera. stock en unidades.
+    #   - 'peso'    : se vende por peso (kg) de forma continua; admite venta
+    #                 por importe ($) y se descuenta la fracción de stock
+    #                 exacta equivalente (stock en kg).
+    #   - 'porcion' : se vende por porción/preparación.
+    #   - 'metros'  : se vende por metro lineal (ferretería: cables, telas).
+    #                 Se comporta como 'peso': admite importe ($) y fracciones.
+    #   - 'litros'  : se vende por litro (ferretería: pinturas, solventes).
+    #                 Se comporta como 'peso': admite importe ($) y fracciones.
+    #   - 'servicio': no es un bien físico sino un servicio (librería:
+    #                 copia/impresión). Por defecto NO descuenta stock si
+    #                 stock == 0 (ilimitado); si stock > 0 actúa como tope.
+    #
+    # NOTA (escalabilidad): 'metros'/'litros' se tratan como VARIANTES CONTINUAS
+    # (misma mecánica que 'peso': cantidad fraccionaria + venta por importe).
+    # El frontend decide la etiqueta; el backend solo necesita saber si la
+    # cantidad es fraccionaria o entera.
+    TIPOS_UNIDAD = ("peso", "unidad", "porcion", "metros", "litros", "servicio")
+    # Subconjunto de unidades que admiten cantidades fraccionarias / venta por
+    # importe (misma mecánica de stock continuo que 'peso'). Centralizado para
+    # no repetir la lista en router/schemas.
+    TIPOS_UNIDAD_CONTINUOS = ("peso", "metros", "litros")
+    # Subconjunto que representa un servicio (no bien físico).
+    TIPOS_UNIDAD_SERVICIO = ("servicio",)
 
     id = Column(Uuid, primary_key=True, default=_uuid)
     nombre = Column(Text, nullable=False)
@@ -86,6 +104,11 @@ class Producto(Base):
     # `fecha_vencimiento`: control de perecibles (panaderia/alimentos).
     # Nullable: solo aplica a rubros con vencimiento.
     fecha_vencimiento = Column(DateTime, nullable=True)
+    # --- Variantes de impresión (librería: productos tipo 'servicio') ---
+    # Columnas dedicadas (no se reutiliza talle/color) para no mezclar semántica
+    # y permitir evolución independiente. Nullable: el resto de rubros las ignora.
+    tipo_papel = Column(String(40), nullable=True)  # ej. A4, Oficio, Foto
+    color_bn = Column(String(20), nullable=True)  # ej. Color, B/N
     activo = Column(Boolean, nullable=False, default=True)
     creado_en = Column(DateTime, nullable=False, default=now_utc)
     actualizado_en = Column(DateTime, nullable=True)
@@ -115,11 +138,11 @@ class Venta(Base):
     anulada_en = Column(DateTime, nullable=True)
     anulada_por = Column(String(255), nullable=True)
     motivo_anulacion = Column(String(255), nullable=True)
-    
+
     # Vuelto en efectivo
     paga_con = Column(Numeric(12, 2), nullable=True)
     vuelto = Column(Numeric(12, 2), nullable=True)
-    
+
     creado_en = Column(DateTime, nullable=False, default=now_utc)
 
     items = relationship(

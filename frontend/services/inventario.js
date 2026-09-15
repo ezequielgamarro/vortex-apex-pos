@@ -90,46 +90,112 @@ function rubroActual() {
 }
 
 /**
+ * Reglas de UI por rubro — ESTRUCTURA DECLARATIVA.
+ *
+ * Cada rubro declara QUÉ debe verse. Agregar un rubro nuevo = agregar una
+ * entrada aquí (Principio Open/Closed: extender sin tocar la lógica de render).
+ *
+ * Campos:
+ *   unidades : lista blanca de `tipo_unidad` visibles/habilitadas en el select.
+ *              La primera es la que se fuerza si la actual queda fuera.
+ *   ropa     : muestra el bloque Marca/Talle/Color (data-rubro="talle").
+ *   venc     : muestra el bloque de fecha de vencimiento.
+ *   libreria : muestra el bloque de variantes de impresión (papel/BN).
+ *   filtrosRopa : muestra la barra de filtros de indumentaria.
+ */
+const REGLAS_RUBRO = {
+  general: {
+    unidades: ['unidad', 'peso', 'porcion'],
+    ropa: false, venc: false, libreria: false, filtrosRopa: false,
+  },
+  panaderia_alimentos: {
+    unidades: ['unidad', 'peso', 'porcion'],
+    ropa: false, venc: true, libreria: false, filtrosRopa: false,
+  },
+  indumentaria: {
+    // Indumentaria vende por pieza: se oculta peso/porción (forzar Unidad).
+    unidades: ['unidad'],
+    ropa: true, venc: false, libreria: false, filtrosRopa: true,
+  },
+  ferreteria: {
+    // Ferretería mide en unidad, peso (kg), metros y litros.
+    unidades: ['unidad', 'peso', 'metros', 'litros'],
+    ropa: false, venc: false, libreria: false, filtrosRopa: false,
+  },
+  libreria: {
+    // Librería vende por unidad o como servicio de copia/impresión.
+    unidades: ['unidad', 'servicio'],
+    ropa: false, venc: false, libreria: true, filtrosRopa: false,
+  },
+};
+
+/** Devuelve la regla del rubro actual (con fallback seguro a 'general'). */
+function reglaRubro() {
+  return REGLAS_RUBRO[rubroActual()] || REGLAS_RUBRO.general;
+}
+
+/**
  * Muestra u oculta los campos específicos del rubro en el modal.
- *   - 'indumentaria'        -> talle + color
- *   - 'panaderia_alimentos' -> fecha de vencimiento
- * Estructura declarativa: agregar rubro = agregar un caso aquí.
+ *   - 'indumentaria'        -> marca/talle/color; fuerza Unidad.
+ *   - 'panaderia_alimentos' -> fecha de vencimiento; unidad/peso/porción.
+ *   - 'ferreteria'          -> unidad/peso/metros/litros.
+ *   - 'libreria'            -> unidad/servicio; variantes de impresión.
+ *   - 'general'             -> unidad/peso/porción.
  */
 function aplicarRubroUI() {
-  const rubro = rubroActual();
-  // Indumentaria agrupa los 3 atributos (marca/talle/color) bajo un mismo
-  // contenedor declarativo `data-rubro="talle"` en el HTML. Se conserva ese
-  // contenedor como single source of truth para mostrar/ocultar el bloque.
-  const showRopa = rubro === 'indumentaria';
-  const showVenc = rubro === 'panaderia_alimentos';
+  const regla = reglaRubro();
+
+  // Bloque Marca/Talle/Color (contenedor declarativo data-rubro="talle").
   document.querySelectorAll('[data-rubro="talle"], [data-rubro="marca"], [data-rubro="color"]').forEach((el) => {
-    el.classList.toggle('hidden', !showRopa);
+    el.classList.toggle('hidden', !regla.ropa);
   });
+  // Bloque de fecha de vencimiento (perecibles).
   document.querySelectorAll('[data-rubro="vencimiento"]').forEach((el) => {
-    el.classList.toggle('hidden', !showVenc);
+    el.classList.toggle('hidden', !regla.venc);
   });
-  
+  // Bloque de variantes de impresión (librería/servicio).
+  document.querySelectorAll('[data-rubro="libreria"]').forEach((el) => {
+    el.classList.toggle('hidden', !regla.libreria);
+  });
+
+  // Unidad de venta: solo se habilitan las opciones declaradas para el rubro.
   const tipoSelect = $('prod-tipo');
   if (tipoSelect) {
-    const showPesoPorcion = (rubro === 'panaderia_alimentos' || rubro === 'general');
-    Array.from(tipoSelect.options).forEach(opt => {
-      if (opt.value === 'peso' || opt.value === 'porcion') {
-        opt.style.display = showPesoPorcion ? '' : 'none';
-        opt.disabled = !showPesoPorcion;
-      }
+    const permitidas = new Set(regla.unidades);
+    Array.from(tipoSelect.options).forEach((opt) => {
+      const visible = permitidas.has(opt.value);
+      opt.style.display = visible ? '' : 'none';
+      opt.disabled = !visible;
     });
-    if (tipoSelect.options[tipoSelect.selectedIndex]?.disabled) {
-      tipoSelect.value = 'unidad';
+    // Si la opción seleccionada quedó fuera del rubro, forzamos la principal.
+    const sel = tipoSelect.options[tipoSelect.selectedIndex];
+    if (!sel || sel.disabled) {
+      tipoSelect.value = regla.unidades[0] || 'unidad';
     }
+    // El sub-bloque de variantes de impresión depende de la unidad elegida.
+    aplicarVariantesImpresion();
   }
-  
-  // Mostrar/ocultar barra de filtros indumentaria
+
+  // Barra de filtros de indumentaria.
   const barraIndumentaria = $('filtros-indumentaria');
   if (barraIndumentaria) {
-    const esRopa = (rubro === 'indumentaria');
-    barraIndumentaria.classList.toggle('hidden', !esRopa);
-    barraIndumentaria.classList.toggle('flex', esRopa);
+    barraIndumentaria.classList.toggle('hidden', !regla.filtrosRopa);
+    barraIndumentaria.classList.toggle('flex', regla.filtrosRopa);
   }
+}
+
+/**
+ * Muestra el bloque de variantes de impresión (Tipo de Papel / Color-BN)
+ * SOLO cuando el rubro es librería Y la unidad de venta es 'servicio'.
+ * Regla encapsulada en un único lugar (DRY) y reevaluada en cada cambio.
+ */
+function aplicarVariantesImpresion() {
+  const tipoSelect = $('prod-tipo');
+  const bloque = $('prod-variantes-impresion');
+  if (!tipoSelect || !bloque) return;
+  const esLibreria = rubroActual() === 'libreria';
+  const esServicio = (tipoSelect.value || '') === 'servicio';
+  bloque.classList.toggle('hidden', !(esLibreria && esServicio));
 }
 
 function toggleModales() {
@@ -218,9 +284,13 @@ function renderTabla() {
   const admin = esAdmin();
 
   visibles.forEach((p) => {
-    const bajo = p.stock <= p.stock_minimo;
+        const bajo = p.stock <= p.stock_minimo;
     const tipo = p.tipo_unidad || 'unidad';
-    const etiquetaTipo = tipo === 'peso' ? 'Peso' : (tipo === 'porcion' ? 'Porción' : 'Unidad');
+    const ETIQUETAS_TIPO = {
+      peso: 'Peso', porcion: 'Porción', metros: 'Metros',
+      litros: 'Litros', servicio: 'Servicio', unidad: 'Unidad',
+    };
+    const etiquetaTipo = ETIQUETAS_TIPO[tipo] || 'Unidad';
     // Aviso de vencimiento (solo si el producto trae fecha).
     let vencBadge = '';
     if (p.fecha_vencimiento) {
@@ -315,12 +385,17 @@ function abrirModal(titulo = 'Nuevo producto', prod = null) {
   if (elTalle) elTalle.value = prod?.talle || '';
   const elColor = $('prod-color');
   if (elColor) elColor.value = prod?.color || '';
-  const elVenc = $('prod-vencimiento');
+    const elVenc = $('prod-vencimiento');
   if (elVenc) {
     elVenc.value = prod?.fecha_vencimiento
       ? String(prod.fecha_vencimiento).slice(0, 10)
       : '';
   }
+  // Variantes de impresión (librería/servicio): valores por defecto seguros.
+  const elPapel = $('prod-tipo-papel');
+  if (elPapel) elPapel.value = prod?.tipo_papel || 'A4';
+  const elBn = $('prod-color-bn');
+  if (elBn) elBn.value = prod?.color_bn || 'B/N';
   aplicarRubroUI();
   $('prod-activo').checked = prod ? !!prod.activo : true;
   // Select de categoría: conserva la elegida (server-side list).
@@ -356,8 +431,9 @@ function confirmarEliminar(id) {
 // ---- Guardar (create/update) ----
 async function guardar(e) {
   e.preventDefault();
-  const id = $('prod-id').value;
+    const id = $('prod-id').value;
   const precio = Number($('prod-precio').value || 0);
+  const payloadTipoUnidad = $('prod-tipo').value || 'unidad';
   const payload = {
     nombre: $('prod-nombre').value.trim(),
     codigo_barras: $('prod-codigo').value.trim() || null,
@@ -370,12 +446,20 @@ async function guardar(e) {
     stock_minimo: Number($('prod-stock-min').value || 0),
     descripcion: $('prod-descripcion').value.trim() || null,
     activo: $('prod-activo').checked,
-    // Campos multi-rubro (se envían siempre; el backend los acepta opcionales).
+        // Campos multi-rubro (se envían siempre; el backend los acepta opcionales).
     marca: $('prod-marca')?.value.trim() || null,
     talle: $('prod-talle')?.value.trim() || null,
     color: $('prod-color')?.value.trim() || null,
     fecha_vencimiento: $('prod-vencimiento')?.value
       ? `${$('prod-vencimiento').value}T00:00:00`
+      : null,
+    // Variantes de impresión: SOLO se envían si el tipo es 'servicio' (evita
+    // guardar datos residuales cuando el rubro/unidad no las usa).
+    tipo_papel: payloadTipoUnidad === 'servicio'
+      ? ($('prod-tipo-papel')?.value || null)
+      : null,
+    color_bn: payloadTipoUnidad === 'servicio'
+      ? ($('prod-color-bn')?.value || null)
       : null,
   };
   if (!(precio > 0)) { mostrarAlerta('El precio de venta debe ser mayor a cero.', 'error'); return; }
@@ -536,13 +620,18 @@ async function init() {
     importarExcel(file);
   });
 
-  // Auto-cálculo de Precio = Costo + Margen %, con override manual editable.
+    // Auto-cálculo de Precio = Costo + Margen %, con override manual editable.
   const inpCosto = $('prod-costo');
   const inpMargen = $('prod-margen');
   if (inpCosto) inpCosto.addEventListener('input', autocalcularPrecio);
   if (inpMargen) inpMargen.addEventListener('input', autocalcularPrecio);
   const inpPrecio = $('prod-precio');
   if (inpPrecio) inpPrecio.addEventListener('input', calcularPrecioSugerido);
+
+  // Unidad de venta: reevalúa el sub-bloque de variantes de impresión
+  // (librería/servicio) en cada cambio (Single Source: aplicarVariantesImpresion).
+  const selTipo = $('prod-tipo');
+  if (selTipo) selTipo.addEventListener('change', aplicarVariantesImpresion);
 
   // Toolbar (filtros y orden), refrescan contra el backend.
   ['filtro-categoria', 'filtro-estado', 'filtro-activo', 'orden-col'].forEach((id) => {

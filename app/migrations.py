@@ -60,9 +60,13 @@ def run_light_migrations(db) -> None:
                 db, "productos", "porcentaje_ganancia", "NUMERIC DEFAULT 0"
             )
             # --- Upgrade v2: multi-rubro y vencimientos ---
+            _agregar_columna(db, "productos", "marca", "VARCHAR(80)")
             _agregar_columna(db, "productos", "talle", "VARCHAR(40)")
             _agregar_columna(db, "productos", "color", "VARCHAR(40)")
             _agregar_columna(db, "productos", "fecha_vencimiento", "DATETIME")
+            # --- Upgrade v3: variantes de impresión (librería/servicio) ---
+            _agregar_columna(db, "productos", "tipo_papel", "VARCHAR(40)")
+            _agregar_columna(db, "productos", "color_bn", "VARCHAR(20)")
 
         # --- clientes (columnas de respaldo si la tabla se creó antigua) ---
         if "clientes" in tablas:
@@ -71,17 +75,13 @@ def run_light_migrations(db) -> None:
 
         # --- ventas: estado de anulacion + auditoria (upgrade v2) ---
         if "ventas" in tablas:
-            _agregar_columna(
-                db, "ventas", "estado", "VARCHAR(20) DEFAULT 'activa'"
-            )
+            _agregar_columna(db, "ventas", "estado", "VARCHAR(20) DEFAULT 'activa'")
             _agregar_columna(db, "ventas", "anulada_en", "DATETIME")
             _agregar_columna(db, "ventas", "anulada_por", "VARCHAR(255)")
 
         # --- usuarios: rubro multi-rubro (upgrade v2) ---
         if "usuarios" in tablas:
-            _agregar_columna(
-                db, "usuarios", "rubro", "VARCHAR(40) DEFAULT 'general'"
-            )
+            _agregar_columna(db, "usuarios", "rubro", "VARCHAR(40) DEFAULT 'general'")
 
         db.commit()
         logger.info("[migracion] Verificación/ajuste ligero de esquema completado.")

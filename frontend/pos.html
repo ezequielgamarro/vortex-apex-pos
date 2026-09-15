@@ -188,15 +188,66 @@
         <input id="peso-valor" type="number" min="0" step="0.001" class="form-input-pos" placeholder="Ej: 1.500" inputmode="decimal">
       </div>
 
-      <div class="flex justify-end gap-3">
+            <div class="flex justify-end gap-3">
         <button type="button" class="btn-secondary" id="btn-peso-cancelar-2">Cancelar</button>
         <button type="button" class="btn-primary" id="btn-peso-agregar">Agregar al carrito</button>
       </div>
     </div>
   </div>
 
+  <!-- ===================== MODAL: SERVICIO / COPIA (librería) =====================
+       Para productos tipo 'servicio' (copia/impresión). El cajero confirma la
+       cantidad de copias y puede ajustar variantes (papel, color/B/N) que fueron
+       definidas por defecto en el inventario. El foco arranca en la cantidad
+       para tipeo rápido (mismo patrón ergonómico que el modal de peso). -->
+  <div id="modal-servicio" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-md bg-pos-bg rounded-xl shadow-lg p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h4 class="text-lg font-semibold text-pos-text-head" id="servicio-modal-titulo">Servicio / Copia</h4>
+          <p class="text-xs text-pos-text-body/60 mt-0.5" id="servicio-modal-precio"></p>
+        </div>
+        <button type="button" class="text-pos-text-body/60 hover:text-pos-text-head" id="btn-servicio-cancelar" aria-label="Cerrar">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label mb-1.5" for="servicio-cantidad">Cantidad de copias</label>
+        <input id="servicio-cantidad" type="number" min="1" step="1" class="form-input-pos" placeholder="Ej: 10" inputmode="numeric">
+      </div>
+
+      <!-- Variantes de impresión (precargadas desde el inventario del producto;
+           ajustables por venta). Se ocultan si el producto no las definió. -->
+      <div class="grid grid-cols-2 gap-3 mb-5">
+        <div>
+          <label class="form-label mb-1.5" for="servicio-papel">Tipo de papel</label>
+          <select id="servicio-papel" class="form-input-pos">
+            <option value="A4">A4</option>
+            <option value="Oficio">Oficio</option>
+            <option value="Carta">Carta</option>
+            <option value="Foto">Foto</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label mb-1.5" for="servicio-bn">Color / B/N</label>
+          <select id="servicio-bn" class="form-input-pos">
+            <option value="B/N">B/N</option>
+            <option value="Color">Color</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3">
+        <button type="button" class="btn-secondary" id="btn-servicio-cancelar-2">Cancelar</button>
+        <button type="button" class="btn-primary" id="btn-servicio-agregar">Agregar al carrito</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===================== MODAL: NUEVO CLIENTE (cuenta corriente) ===================== -->
-  <div id="modal-nuevo-cliente" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+  <div id="modal-nuevo-cliente"  class="fixed inset-0 z-50 hidden items-center justify-center p-4">
     <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
     <div class="relative w-full max-w-sm bg-pos-bg rounded-xl shadow-lg p-6">
       <div class="flex items-center justify-between mb-4">

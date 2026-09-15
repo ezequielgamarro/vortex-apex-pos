@@ -223,14 +223,17 @@
             <input id="prod-stock-min" type="number" step="any" min="0" class="form-input-pos">
           </div>
         </div>
-        <div>
+                <div>
           <label class="form-label" for="prod-tipo">Unidad de venta</label>
           <select id="prod-tipo" class="form-input-pos">
             <option value="unidad">Unidad (por pieza)</option>
             <option value="peso">Peso (por kg / importe $)</option>
             <option value="porcion">Porción</option>
+            <option value="metros">Metros (por metro lineal / importe $)</option>
+            <option value="litros">Litros (por litro / importe $)</option>
+            <option value="servicio">Servicio / Copia (librería)</option>
           </select>
-          <p class="text-xs text-pos-text-body/60 mt-1">Para 'Peso' el stock se mide en kg y permite vender por importe ($).</p>
+          <p class="text-xs text-pos-text-body/60 mt-1">Para 'Peso', 'Metros' y 'Litros' el stock se mide en su unidad y permite vender por importe ($).</p>
         </div>
 
         <!-- ============ Campos multi-rubro (Módulo 1): visibles según el rubro ============ -->
@@ -256,6 +259,28 @@
           <label class="form-label" for="prod-vencimiento">Fecha de vencimiento</label>
           <input id="prod-vencimiento" type="date" class="form-input-pos">
           <p class="text-xs text-pos-text-body/60 mt-1">Para panadería/alimentos: se alerta cuando está por vencer o vencido.</p>
+        </div>
+        <!-- data-rubro="libreria": variantes de impresión (solo si la unidad es Servicio/Copia). -->
+        <div id="prod-variantes-impresion" class="hidden" data-rubro="libreria">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="form-label" for="prod-tipo-papel">Tipo de papel</label>
+              <select id="prod-tipo-papel" class="form-input-pos">
+                <option value="A4">A4</option>
+                <option value="Oficio">Oficio</option>
+                <option value="Carta">Carta</option>
+                <option value="Foto">Foto</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="prod-color-bn">Color / B/N</label>
+              <select id="prod-color-bn" class="form-input-pos">
+                <option value="B/N">B/N</option>
+                <option value="Color">Color</option>
+              </select>
+            </div>
+          </div>
+          <p class="text-xs text-pos-text-body/60 mt-1">Variantes por defecto de las copias/impresiones. El cajero puede ajustarlas al vender (si se habilita por línea).</p>
         </div>
 
         <div>

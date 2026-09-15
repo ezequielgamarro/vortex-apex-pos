@@ -30,6 +30,42 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 ROL_ADMIN = "admin"
 ROL_CAJERO = "cajero"
 
+# ==========================================================================
+# SUPERADMIN — Single Source of Truth (backend)
+# --------------------------------------------------------------------------
+# El sistema tiene UN único SuperAdministrador, identificado por este email
+# canónico (creado por el seed/`crear_admin_si_hace_falta`). Es la autoridad
+# que puede gestionar el rubro de los demás usuarios. El resto de los 'admin'
+# son administradores estándar y NO pueden elegir rubro.
+#
+# IMPORTANTE (seguridad): la comparación se hace SIEMPRE contra el email
+# autoritativo de la BD (vía `get_current_user`), nunca contra el payload ni
+# el claim del JWT. El cliente no puede falsificar su identidad aquí.
+#
+# Se deriva de `settings.ADMIN_EMAIL` (configurable por entorno) con el
+# fallback documentado; así, si una instalación personaliza el email del
+# administrador semilla, el SuperAdmin sigue siendo el correcto sin tocar
+# código. Definido una sola vez para evitar *magic strings* dispersos.
+# ==========================================================================
+SUPERADMIN_EMAIL_FALLBACK = "admin@pos.local"
+
+
+def email_superadmin() -> str:
+    """Email del SuperAdmin: config de entorno o el fallback documentado."""
+    configurado = (settings.ADMIN_EMAIL or "").strip().lower()
+    return configurado or SUPERADMIN_EMAIL_FALLBACK
+
+
+def es_superadmin(email: str | None) -> bool:
+    """¿El email corresponde al SuperAdministrador canónico?
+
+    Comparación normalizada (trim + lower) para tolerar variaciones de caja
+    sin relajar la identidad. Acepta None de forma segura (devuelve False).
+    """
+    if not email:
+        return False
+    return email.strip().lower() == email_superadmin()
+
 
 @dataclass
 class UsuarioActual:

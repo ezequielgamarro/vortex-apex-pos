@@ -13,7 +13,8 @@ Puntos validados:
   1. Aislamiento offline de Reportes (Chart.js local, sin CDN).
   2. Enrutamiento del menú: href de Inventario -> inventario.html (no pos.html).
   3. CSS compilado: scrollbar dark + badge de contraste (orange-400) en oscuro.
-  4. Auto-focus del modal POS sobre el input de cantidad (#peso-valor).
+  4. Auto-focus del modal POS sobre el input de cantidad (#peso-valor y #servicio-cantidad).
+  5. Coherencia del enum multi-rubro (modelo ↔ schema ↔ UI de inventario).
 """
 
 from __future__ import annotations
@@ -296,6 +297,86 @@ def validar_autofocus_pos() -> None:
         ),
     )
 
+    # --- Modal de SERVICIO/COPIA (librería): mismo patrón ergonómico. ---
+    tiene_helper_serv = (
+        re.search(r"focusInputDiferido\(\s*['\"]servicio-cantidad['\"]", pos)
+        is not None
+    )
+    reportar(
+        "Auto-focus aplicado al input de copias (#servicio-cantidad)",
+        tiene_helper_serv,
+        (
+            "Foco vía focusInputDiferido('servicio-cantidad')."
+            if tiene_helper_serv
+            else "No se encontró foco asociado a #servicio-cantidad."
+        ),
+    )
+
+
+# ==========================================================================
+# 5. COHERENCIA DEL ENUM MULTI-RUBRO (modelo ↔ schema ↔ UI)
+# ==========================================================================
+def validar_enum_multirubro() -> None:
+    r"""Verifica que los `tipo_unidad` soportados sean consistentes en las capas.
+
+    Fuente de verdad: `Producto.TIPOS_UNIDAD` (app/models). Comprueba que el
+    schema Pydantic derive su patrón de ahí y que la UI (inventario.html) ofrezca
+    las mismas opciones — así no se puede guardar un producto que el backend
+    rechace (evita el bug "opción en UI sin soporte de API").
+    """
+    print(f"\n{SEP*2} 5. Coherencia del Enum Multi-rubro {SEP*12}")
+
+    modelos = leer_texto(RAIZ / "app" / "models" / "__init__.py")
+    schema = leer_texto(RAIZ / "app" / "schemas" / "producto.py")
+    html = leer_texto(FRONTEND / "inventario.html")
+
+    # 5a. El modelo declara los tipos esperados.
+    esperados = ["peso", "unidad", "porcion", "metros", "litros", "servicio"]
+    m = re.search(r"TIPOS_UNIDAD\s*=\s*\(([^)]*)\)", modelos)
+    declarados = re.findall(r"['\"]([a-z]+)['\"]", m.group(1)) if m else []
+    reportar(
+        "app/models declara todos los tipo_unidad esperados",
+        set(esperados).issubset(set(declarados)),
+        f"declarados: {declarados}",
+    )
+
+    # 5b. El schema deriva el patrón de Producto (DRY) y NO hardcodea el viejo.
+    deriva = "_PATTERN_TIPO_UNIDAD" in schema and "Producto.TIPOS_UNIDAD" in schema
+    viejo = 'pattern="^(peso|unidad|porcion)$"' in schema
+    reportar(
+        "El schema deriva el patrón del modelo (sin hardcodear el enum viejo)",
+        deriva and not viejo,
+        (
+            "Deriva de Producto.TIPOS_UNIDAD."
+            if deriva and not viejo
+            else "Aún usa un patrón hardcodeado."
+        ),
+    )
+
+    # 5c. La UI ofrece todas las opciones (value=) de tipo_unidad.
+    opciones = set(re.findall(r'id="prod-tipo"[\s\S]*?</select>', html))
+    bloque = next(iter(opciones), "")
+    valores_ui = set(re.findall(r'<option value="([a-z]+)"', bloque))
+    faltantes = set(esperados) - valores_ui
+    reportar(
+        "La UI (inventario.html) ofrece todas las unidades soportadas",
+        not faltantes,
+        (
+            f"opciones UI: {sorted(valores_ui)}"
+            if not faltantes
+            else f"faltan en la UI: {sorted(faltantes)}"
+        ),
+    )
+
+    # 5d. Coherencia de negocio: indumentaria fuerza 'unidad'; las continuas
+    #     (peso/metros/litros) admiten importe. Verificamos que el modelo
+    #     exponga el subconjunto continuo usado por ventas.
+    reportar(
+        "app/models expone TIPOS_UNIDAD_CONTINUOS (peso/metros/litros)",
+        "TIPOS_UNIDAD_CONTINUOS" in modelos,
+        "Usado por el router de ventas para venta por importe.",
+    )
+
 
 # ==========================================================================
 # MAIN
@@ -309,6 +390,7 @@ def main() -> int:
     validar_ruteo_inventario()
     validar_css_dark()
     validar_autofocus_pos()
+    validar_enum_multirubro()
 
     total = len(RESULTADOS)
     pasados = sum(1 for _, ok, _ in RESULTADOS if ok)

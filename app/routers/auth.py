@@ -22,11 +22,31 @@ from app.dependencies import (
     verificar_password,
     get_current_user,
     requiere_rol,
+    es_superadmin,
+    email_superadmin,
     UsuarioActual,
 )
 from app.models import Usuario
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
+
+# Rubros válidos del sistema (multi-rubro). Single Source of Truth para la
+# validación del rubro que solo el SuperAdmin puede fijar. Cualquier valor
+# fuera de esta lista se normaliza a 'general'.
+RUBROS_VALIDOS = (
+    "general",
+    "panaderia_alimentos",
+    "indumentaria",
+    "ferreteria",
+    "libreria",
+)
+RUBRO_DEFAULT = "general"
+
+
+def _normalizar_rubro(valor: str | None) -> str:
+    """Devuelve un rubro válido o el por defecto si el valor es inválido/vacío."""
+    limpio = (valor or "").strip().lower()
+    return limpio if limpio in RUBROS_VALIDOS else RUBRO_DEFAULT
 
 
 class TokenRespuesta(BaseModel):
@@ -55,8 +75,11 @@ class AdminCrearUsuario(BaseModel):
     email: str
     password: str = Field(...)
     rol: str = Field("cajero", description="'admin' | 'cajero'")
-    # Rubro del negocio. Si vacío, el backend lo hereda del admin creador.
-    rubro: str = Field("", max_length=40)
+    # Rubro del negocio. SOLO lo respeta el backend cuando quien crea el usuario
+    # es el SuperAdministrador (ver `crear_usuario_admin`). Para un admin
+    # estándar el valor se IGNORA y se hereda el rubro del comercio (el del
+    # SuperAdmin). Por eso aquí basta con un valor por defecto seguro.
+    rubro: str = Field("general", max_length=40)
 
     # Mini-validador local (repetido por claridad; no hereda de RegisterRequest).
     _normalizar_email = validator("email", allow_reuse=True)(
@@ -146,6 +169,12 @@ def obtener_perfil(
     """Devuelve la información del usuario autenticado (id, email, nombre, rol).
 
     Útil para que el frontend conozca el rol y adapte la interfaz.
+
+    Incluye `es_superadmin`: bandera AUTORITATIVA calculada en el backend que
+    indica si el usuario es el SuperAdministrador de la instalación. El
+    frontend la usa para decidir si muestra el selector de "rubro" (solo el
+    SuperAdmin puede elegirlo); así el criterio vive en un único lugar y no se
+    duplica como magic string en el cliente.
     """
     # El rubro depende de la fila completa; `UsuarioActual` no lo trae, así
     # que se consulta la BD para exponerlo en el perfil de display.
@@ -154,7 +183,7 @@ def obtener_perfil(
     _db = SessionLocal()
     try:
         u = _db.query(Usuario).filter(Usuario.id == usuario.id).first()
-        rubro = (u.rubro if u is not None else None) or 'general'
+        rubro = (u.rubro if u is not None else None) or "general"
     finally:
         _db.close()
     return {
@@ -163,6 +192,7 @@ def obtener_perfil(
         "nombre": usuario.nombre,
         "rol": usuario.rol,
         "rubro": rubro,
+        "es_superadmin": es_superadmin(usuario.email),
     }
 
 
@@ -171,8 +201,17 @@ def listar_usuarios(
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(requiere_rol("admin")),
 ):
-    """Devuelve todos los usuarios registrados. Solo accesible para administradores."""
-    usuarios = db.query(Usuario).order_by(Usuario.nombre_completo).all()
+    """Devuelve todos los usuarios registrados. Solo accesible para administradores.
+
+    PRIVACIDAD DEL SUPERADMIN: la cuenta del SuperAdministrador
+    (`admin@pos.local`) se EXCLUYE del listado cuando quien consulta es un
+    administrador estándar. Solo el propio SuperAdmin ve su fila. Así el dueño
+    de la instalación opera sin exponerse a los administradores del comercio.
+    """
+    consulta = db.query(Usuario).order_by(Usuario.nombre_completo)
+    if not es_superadmin(usuario.email):
+        consulta = consulta.filter(Usuario.email != email_superadmin())
+    usuarios = consulta.all()
     return [
         {
             "id": u.id,
@@ -182,6 +221,7 @@ def listar_usuarios(
             "rubro": u.rubro,
             "activo": u.activo,
             "creado_en": u.creado_en,
+            "es_superadmin": es_superadmin(u.email),
         }
         for u in usuarios
     ]
@@ -210,6 +250,20 @@ def cambiar_rol(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Usuario no encontrado",
+        )
+    # BLINDAJE DEL SUPERADMIN: el objetivo no puede ser tocado por un admin
+    # estándar. Evita que un administrador del comercio degrade o altere la
+    # cuenta de la autoridad de la instalación.
+    if es_superadmin(target.email) and not es_superadmin(usuario.email):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permisos para modificar al SuperAdministrador.",
+        )
+    # El SuperAdmin no puede degradarse a sí mismo (perdería el control total).
+    if target.id == usuario.id and es_superadmin(usuario.email) and rol != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El SuperAdministrador no puede quitarse su propio rol.",
         )
     target.rol = rol
     db.commit()
@@ -263,14 +317,24 @@ def crear_usuario_admin(
             detail="Ya existe un usuario con ese correo electrónico.",
         )
 
-    # Rubro: el indicado o, por defecto, el del admin creador (herencia).
-    rubros_validos = "general|panaderia_alimentos|indumentaria|ferreteria|libreria".split("|")
-    rubro = (data.rubro or "").strip()
-    if not rubro:
-        admin = db.query(Usuario).filter(Usuario.id == usuario.id).first()
-        rubro = (admin.rubro if admin is not None else None) or "general"
-    if rubro not in rubros_validos:
-        rubro = "general"
+    # --- RUBRO (autorización por identidad) ---------------------------------
+    # REGLA DE NEGOCIO: solo el SuperAdministrador puede elegir el rubro de un
+    # usuario. Un administrador estándar NO puede fijarlo: sus usuarios heredan
+    # el rubro del COMERCIO (el rubro del SuperAdmin en BD), garantizando la
+    # coherencia multi-rubro de la instalación.
+    #
+    # La verificación se hace contra el email AUTORITATIVO de la BD
+    # (`usuario.email`, proveniente de `get_current_user`), nunca contra el
+    # payload. Un admin estándar que envíe `rubro` en el body es IGNORADO.
+    if es_superadmin(usuario.email):
+        rubro = _normalizar_rubro(data.rubro)
+    else:
+        admin_comercio = (
+            db.query(Usuario).filter(Usuario.email == email_superadmin()).first()
+        )
+        rubro = _normalizar_rubro(
+            admin_comercio.rubro if admin_comercio is not None else None
+        )
 
     nuevo = Usuario(
         email=email,
@@ -321,6 +385,13 @@ def cambiar_estado_usuario(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Usuario no encontrado",
+        )
+    # BLINDAJE DEL SUPERADMIN: un admin estándar no puede desactivar la cuenta
+    # de la autoridad de la instalación.
+    if es_superadmin(target.email) and not es_superadmin(usuario.email):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permisos para modificar al SuperAdministrador.",
         )
     if target.id == usuario.id and not activo:
         raise HTTPException(

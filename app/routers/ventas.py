@@ -71,6 +71,14 @@ def _resolver_item(item, producto: Producto) -> dict:
         bruto:    importe bruto a cobrar por el ítem (antes del descuento).
 
     Lanza HTTPException si el request es inconsistente con el tipo de unidad.
+
+    Reglas por tipo de unidad (ver `Producto.TIPOS_UNIDAD`):
+      - CONTINUAS ('peso','metros','litros'): admiten cantidad fraccionaria y
+        venta por IMPORTE ($); la cantidad física se deriva como imp/precio.
+      - 'servicio' (librería: copia/impresión): se cobra por unidad de servicio
+        (entero). NO descuenta stock si el producto tiene stock 0 (ilimitado);
+        si tiene stock > 0 se comporta como tope (ver registrar_venta).
+      - ENTERAS ('unidad','porcion'): excluyente por cantidad entera.
     """
     precio_unitario = Decimal(producto.precio)  # precio oficial de la BD
     if precio_unitario <= 0:
@@ -79,10 +87,12 @@ def _resolver_item(item, producto: Producto) -> dict:
             detail=f"El producto '{producto.nombre}' no tiene precio válido.",
         )
 
+    tipo = producto.tipo_unidad or "unidad"
+    es_continuo = tipo in Producto.TIPOS_UNIDAD_CONTINUOS
+
     if item.importe is not None:
-        # ---- Venta por IMPORTE -------------------------------------------------
-        tipo = producto.tipo_unidad or "unidad"
-        if tipo != "peso":
+        # ---- Venta por IMPORTE (solo unidades continuas) --------------------
+        if not es_continuo:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
@@ -101,19 +111,23 @@ def _resolver_item(item, producto: Producto) -> dict:
         # El bruto a cobrar es el importe acordado por el cliente (exacto).
         return {"cantidad": cantidad, "bruto": importe}
 
-    # ---- Venta por CANTIDAD física ---------------------------------------------
-    tipo = producto.tipo_unidad or "unidad"
+    # ---- Venta por CANTIDAD física -----------------------------------------
     cantidad = Decimal(item.cantidad)
-    if tipo != "peso":
-        # Para 'unidad'/'porcion' se exige cantidad entera positiva.
-        if cantidad != cantidad.to_integral_value():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    f"El producto '{producto.nombre}' se vende por {tipo} y "
-                    "la cantidad debe ser un entero."
-                ),
-            )
+    if cantidad <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"La cantidad para '{producto.nombre}' debe ser mayor a cero.",
+        )
+    # Unidades enteras/servicio exigen cantidad entera; las continuas admiten
+    # fracciones (p. ej. 1.5 m de cable, 0.75 L de pintura).
+    if not es_continuo and cantidad != cantidad.to_integral_value():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"El producto '{producto.nombre}' se vende por {tipo} y "
+                "la cantidad debe ser un entero."
+            ),
+        )
     return {"cantidad": cantidad, "bruto": cantidad * precio_unitario}
 
 
@@ -162,10 +176,11 @@ def registrar_venta(
                 )
             cliente_destino = cliente_fk.nombre
 
-        # 1a) Validar y resolver TODOS los ítems antes de tocar la BD.
+            # 1a) Validar y resolver TODOS los ítems antes de tocar la BD.
         cantidades_db: dict[UUID, Decimal] = {}  # cantidad física a descontar
         brutos_db: dict[UUID, Decimal] = {}  # importe bruto del ítem
         total_venta = Decimal("0")
+        servicios_ilimitados: set[UUID] = set()  # productos sin control de stock
 
         for item in venta.items:
             producto = (
@@ -186,9 +201,17 @@ def registrar_venta(
             cantidad = resuelto["cantidad"]
             bruto = resuelto["bruto"]
 
-            # En venta por importe, el importe puede exceder el valor en stock:
-            # equivaldría a pedir más mercancía de la disponible.
-            if producto.stock < cantidad:
+            # Servicios (librería: copia/impresión) NO controlan stock por
+            # defecto: si el producto tiene stock 0 se considera ILIMITADO y no
+            # se descuenta inventario. Solo si stock > 0 se aplica como tope
+            # (permite, p. ej., limitar copias de un pack pre-vendido).
+            es_servicio_ilimitado = (
+                producto.tipo_unidad or "unidad"
+            ) in Producto.TIPOS_UNIDAD_SERVICIO and Decimal(producto.stock or 0) <= 0
+
+            # Venta por importe/cantidad no puede exceder el stock disponible
+            # (salvo servicios ilimitados, que no llevan inventario).
+            if not es_servicio_ilimitado and producto.stock < cantidad:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=(
@@ -196,6 +219,8 @@ def registrar_venta(
                         f"(disponible: {producto.stock}, requerido: {cantidad})."
                     ),
                 )
+            if es_servicio_ilimitado:
+                servicios_ilimitados.add(item.producto_id)
 
             descuento_item = Decimal(item.descuento or 0)
             subtotal = bruto - descuento_item
@@ -208,6 +233,21 @@ def registrar_venta(
             cantidades_db[item.producto_id] = cantidad
             brutos_db[item.producto_id] = bruto
             total_venta += subtotal
+
+        # 1c) VALIDACIÓN FINANCIERA (defensa en profundidad, no confiar solo en
+        #     el frontend). En pagos en EFECTIVO, el monto abonado por el cliente
+        #     (`paga_con`) no puede ser menor al total ni ≤ 0. Se ejecuta ANTES
+        #     de tocar stock/BD dentro de la misma transacción.
+        #     Se omite cuando el pago no es en efectivo (tarjeta/transferencia/
+        #     mixto/CC no requieren un monto físico entregado) o cuando el campo
+        #     no se informa (ventas sin captura de efectivo).
+        if venta.metodo_pago == "efectivo" and venta.paga_con is not None:
+            monto_abonado = Decimal(venta.paga_con)
+            if monto_abonado <= 0 or monto_abonado < total_venta:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=("El monto ingresado no puede ser menor al total a pagar."),
+                )
 
         # 2) Folio único (timestamp + sufijo aleatorio)
         folio = f"V-{datetime.now().strftime('%Y%m%d%H%M%S')}-{_uuid4_short()}"
@@ -236,6 +276,9 @@ def registrar_venta(
                     descuento=Decimal(item.descuento or 0),
                 )
             )
+            # Los servicios ilimitados NO descuentan inventario.
+            if item.producto_id in servicios_ilimitados:
+                continue
             producto = (
                 db.query(Producto).filter(Producto.id == item.producto_id).first()
             )
@@ -340,8 +383,11 @@ def anular_venta(
 
         from app.models import Usuario
         from app.dependencies import verificar_password
+
         admin_usuario = db.query(Usuario).filter(Usuario.id == usuario.id).first()
-        if not admin_usuario or not verificar_password(data.password, admin_usuario.password_hash):
+        if not admin_usuario or not verificar_password(
+            data.password, admin_usuario.password_hash
+        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Contraseña incorrecta.",
@@ -388,9 +434,7 @@ def anular_venta(
                 .first()
             )
             if mov is not None:
-                cliente = (
-                    db.query(Cliente).filter(Cliente.id == mov.cliente_id).first()
-                )
+                cliente = db.query(Cliente).filter(Cliente.id == mov.cliente_id).first()
                 if cliente is not None:
                     cliente.saldo_deuda = Decimal(cliente.saldo_deuda or 0) - Decimal(
                         mov.monto

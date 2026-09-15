@@ -33,15 +33,35 @@ def _ruta_frontend() -> str:
     """Resuelve la carpeta de UI estática de forma robusta (dev y empaquetado).
 
     - Desarrollo: `frontend/` en la raíz del proyecto (junto a app/).
-    - Exe PyInstaller (onefile): PyInstaller extrae `frontend` a `sys._MEIPASS`,
-      de modo que aquí se apunta ahí (lectura estática).
+    - Exe PyInstaller (onefile): PyInstaller extrae `frontend` a `sys._MEIPASS`.
+    - Exe PyInstaller (onedir): carpeta `frontend` junto al ejecutable.
     """
-    if getattr(sys, "_MEIPASS", None):
-        candidate = Path(sys._MEIPASS) / "frontend"
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        candidate = Path(meipass) / "frontend"
         if (candidate / "index.html").exists():
             return str(candidate)
+        if (Path(meipass) / "index.html").exists():
+            return str(meipass)
+
+    # Modo ejecutable empaquetado (onedir o frontend junto al .exe)
+    exe_dir = Path(sys.executable).resolve().parent
+    if (exe_dir / "frontend" / "index.html").exists():
+        return str(exe_dir / "frontend")
+
     # Fallback desarrollo: raíz del proyecto = parent del paquete `app`.
     return str(Path(__file__).resolve().parent.parent / "frontend")
+
+
+def _ruta_dist() -> str | None:
+    """Resuelve la carpeta de distribución compilada (dist/css/app.css)."""
+    frontend = Path(_ruta_frontend())
+    if (frontend / "dist").exists():
+        return str(frontend / "dist")
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass and (Path(meipass) / "dist").exists():
+        return str(Path(meipass) / "dist")
+    return None
 
 
 @asynccontextmanager
@@ -79,6 +99,14 @@ async def lifespan(app: FastAPI):
             crear_admin_si_hace_falta(db)
         finally:
             db.close()
+        # Diagnóstico de archivos estáticos en el arranque
+        _frontend_dir = _ruta_frontend()
+        _css_file = Path(_frontend_dir) / "dist" / "css" / "app.css"
+        logger.info(
+            "Frontend estático configurado en: %s (app.css presente: %s)",
+            _frontend_dir,
+            _css_file.exists(),
+        )
     except Exception:
         # No detener el arranque si la BD falla transitoriamente; el log
         # permite diagnosticar. En producción, revisar el log.
@@ -169,6 +197,11 @@ app.include_router(categorias.router, prefix=settings.API_PREFIX)
 app.include_router(cuentas.router, prefix=settings.API_PREFIX)
 app.include_router(configuracion.router, prefix=settings.API_PREFIX)
 app.include_router(licencia.router, prefix=settings.API_PREFIX)
+
+# Servir la carpeta dist compilada si existe (permite resolver /dist/* directamente)
+_dist_dir = _ruta_dist()
+if _dist_dir:
+    app.mount("/dist", StaticFiles(directory=_dist_dir), name="dist")
 
 # Servir el frontend estático SIEMPRE EN ÚLTIMO LUGAR (catch-all)
 app.mount("/", StaticFiles(directory=_ruta_frontend(), html=True), name="frontend")

@@ -83,8 +83,14 @@ class VentaCreate(BaseModel):
 
     @model_validator(mode="after")
     def validar_items(self) -> "VentaCreate":
-        """Valida que no haya productos repetidos y que la cuenta corriente
-        siempre quede vinculada a un cliente existente."""
+        """Valida que no haya productos repetidos, la cuenta corriente y,
+        en pagos en efectivo, que el monto abonado no sea menor al total.
+
+        NOTA: el total definitivo se recalcula en el router contra los precios
+        reales de la BD (defensa en profundidad). Aquí solo se valida que, si
+        el cliente informa `paga_con` en efectivo, sea un monto positivo; la
+        comparación contra el total autoritativo vive en `registrar_venta`.
+        """
         ids = [item.producto_id for item in self.items]
         if len(ids) != len(set(ids)):
             raise ValueError("No se pueden repetir productos en una misma venta.")
@@ -94,6 +100,13 @@ class VentaCreate(BaseModel):
                 "Para ventas a cuenta corriente (fiado) es obligatorio indicar "
                 "el cliente (cliente_id)."
             )
+
+        # Monto abonado: si se informa (efectivo), debe ser estrictamente > 0.
+        if self.metodo_pago == "efectivo" and self.paga_con is not None:
+            if Decimal(self.paga_con) <= 0:
+                raise ValueError(
+                    "El monto ingresado no puede ser menor al total a pagar."
+                )
         return self
 
 

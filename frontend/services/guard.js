@@ -217,7 +217,6 @@
     { id: 'historial-cajas', href: 'historial-cajas.html', label: 'Historial de Cajas', badge: { texto: 'Cerradas', clase: 'badge badge-neutral' } },
     { id: 'reportes',        href: 'reportes.html',        label: 'Reportes', soloAdmin: true, primero: true },
     { id: 'cuentas',         href: 'cuentas.html',         label: 'Cuentas Corrientes' },
-    { id: 'configuracion',   href: 'configuracion.html',   label: 'Configuración', soloAdmin: true },
     { id: 'usuarios',        href: 'usuarios.html',        label: 'Usuarios', soloAdmin: true, badge: { texto: 'Admin', clase: 'badge badge-primary' } },
   ];
 
