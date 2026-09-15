@@ -1,0 +1,47 @@
+<!-- ============================================================
+     INPUTS REUTILIZABLES
+     Clases base: `.form-label`, `.form-input-pos` definidas en
+     css/tailwind.css (@layer components).
+     ============================================================ -->
+
+<!-- Campo de texto estándar -->
+<div>
+  <label for="nombre-producto" class="form-label">Nombre del producto</label>
+  <input id="nombre-producto" type="text" class="form-input-pos" placeholder="Ingrese el nombre" />
+</div>
+
+<!-- Campo de email -->
+<div>
+  <label for="email" class="form-label">Correo electrónico</label>
+  <input id="email" type="email" class="form-input-pos" placeholder="usuario@correo.com" />
+</div>
+
+<!-- Campo de contraseña -->
+<div>
+  <label for="password" class="form-label">Contraseña</label>
+  <input id="password" type="password" class="form-input-pos" placeholder="••••••••" />
+</div>
+
+<!-- Campo numérico / precio -->
+<div>
+  <label for="precio" class="form-label">Precio</label>
+  <div class="relative">
+    <span class="absolute inset-y-0 left-3 flex items-center text-pos-text-body/60 text-sm">$</span>
+    <input id="precio" type="number" step="0.01" min="0" class="form-input-pos pl-8" placeholder="0.00" />
+  </div>
+</div>
+
+<!-- Select / desplegable -->
+<div>
+  <label for="rol" class="form-label">Rol</label>
+  <select id="rol" class="form-input-pos">
+    <option value="admin">Administrador</option>
+    <option value="cajero">Cajero</option>
+  </select>
+</div>
+
+<!-- Checkbox -->
+<label class="flex items-center gap-2 text-sm text-pos-text-body">
+  <input type="checkbox" class="rounded border-pos-secondary/70 text-pos-primary focus:ring-pos-primary/40" />
+  <span>Recordarme</span>
+</label>

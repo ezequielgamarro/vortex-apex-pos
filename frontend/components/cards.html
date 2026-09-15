@@ -1,0 +1,44 @@
+<!-- ============================================================
+     TARJETAS REUTILIZABLES (KPIs y contenedores)
+     Clase base `.pos-card` definida en css/tailwind.css.
+     ============================================================ -->
+
+<!-- Tarjeta KPI (ventas / stock / caja) -->
+<div class="pos-card p-5 flex items-center justify-between">
+  <div>
+    <p class="text-sm font-medium text-pos-text-body/70">Ventas del día</p>
+    <p class="text-2xl font-bold text-pos-text-head mt-1">$ 0.00</p>
+  </div>
+  <span class="flex items-center justify-center h-12 w-12 rounded-xl bg-pos-primary text-pos-primary-text">
+    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+  </span>
+</div>
+
+<!-- Tarjeta KPI de fondo secundario -->
+<div class="pos-card p-5 flex items-center justify-between bg-pos-secondary">
+  <div>
+    <p class="text-sm font-medium text-pos-text-head/70">Productos registrados</p>
+    <p class="text-2xl font-bold text-pos-text-head mt-1">0</p>
+  </div>
+  <span class="flex items-center justify-center h-12 w-12 rounded-xl bg-pos-primary text-pos-primary-text">
+    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+    </svg>
+  </span>
+</div>
+
+<!-- Tarjeta de estado / panel de detalle -->
+<div class="pos-card p-5">
+  <h4 class="text-base font-semibold text-pos-text-head mb-4">Título de la tarjeta</h4>
+  <p class="text-sm text-pos-text-body">Contenido de la tarjeta.</p>
+</div>
+
+<!-- Tarjeta compacta con listado -->
+<div class="pos-card divide-y divide-pos-secondary/40">
+  <div class="px-5 py-3 flex justify-between text-sm">
+    <span class="text-pos-text-body/70">Item</span>
+    <span class="font-semibold text-pos-text-head">Valor</span>
+  </div>
+</div>

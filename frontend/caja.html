@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Caja | Punto de Venta</title>
+  <link href="./dist/css/app.css" rel="stylesheet" type="text/css">
+  <!-- Anti-FOUC: aplica el tema ANTES del render (evita el flash blanco). -->
+  <script src="./services/theme.js"></script>
+</head>
+<body class="flex">
+
+  <!-- ============================ SIDEBAR ============================ -->
+  <aside id="sidebar" class="fixed z-40 inset-y-0 left-0 w-64 bg-pos-bg border-r border-pos-secondary/60 transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:static" aria-label="Navegación principal">
+    <div class="flex flex-col h-full">
+      <a href="caja.html" class="flex items-center justify-center px-6 h-20 border-b border-pos-secondary/60">
+        <img src="./assets/vortex apex logo modo claro dentro del programa.webp" alt="VORTEX APEX" class="block w-full max-w-[14rem] h-auto dark:hidden">
+          <img src="./assets/vortex apex logo modo oscuro dentro del programa.webp" alt="VORTEX APEX" class="hidden w-full max-w-[14rem] h-auto dark:block">
+      </a>
+      <!-- El menú lateral es renderizado dinámicamente por guard.js (renderSidebar).
+           Single Source of Truth: no incluir enlaces estáticos aquí. -->
+      <nav id="sidebar-menu" class="flex-1 overflow-y-auto p-4 space-y-1"></nav>
+    </div>
+  </aside>
+  <div id="sidebar-overlay" class="fixed inset-0 z-30 bg-pos-overlay/50 backdrop-blur-sm lg:hidden hidden"></div>
+
+  <!-- ===================== CONTENIDO PRINCIPAL ===================== -->
+  <div class="flex flex-col flex-1 min-w-0">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-20 flex items-center gap-4 px-4 sm:px-6 h-16 bg-pos-bg border-b border-pos-secondary/60">
+      <button id="menu-toggle" class="p-2 -ml-2 rounded-lg text-pos-text-head hover:bg-pos-secondary/40 lg:hidden" type="button" aria-label="Abrir menú">
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <h4 class="text-lg font-semibold text-pos-text-head">Control de Caja</h4>
+      <div class="ml-auto flex items-center gap-3">
+        <!-- Indicador de caja abierta/cerrada -->
+        <span class="hidden sm:flex items-center gap-2 text-sm text-pos-text-body/70">
+          <span id="indicador-estado" class="h-3 w-3 rounded-full bg-pos-secondary"></span>
+          <span id="texto-estado">Cerrada</span>
+        </span>
+        <button class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-pos-secondary/40" type="button">
+          <span class="flex items-center justify-center h-8 w-8 rounded-full bg-pos-primary text-pos-primary-text text-sm font-semibold" id="profile-initial">U</span>
+          <span class="hidden sm:block text-sm font-medium text-pos-text-body" id="profile-name">Usuario</span>
+          <span id="profile-rol"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Contenido -->
+    <main class="p-4 sm:p-6 space-y-6">
+
+      <!-- Acciones de caja -->
+      <div class="flex flex-wrap items-center gap-3">
+        <button id="btn-abrir" class="btn-primary">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" transform="scale(0.9) translate(1.2,1.2)"/></svg>
+          <span>Abrir caja</span>
+        </button>
+        <button id="btn-movimiento" class="btn-secondary hidden">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          <span>Registrar movimiento</span>
+        </button>
+        <button id="btn-cerrar" class="btn-danger hidden">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          <span>Cerrar caja</span>
+        </button>
+      </div>
+
+      <!-- Tarjetas financieras -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+        <div class="pos-card p-5">
+          <p class="text-sm text-pos-text-body/60">Fondo inicial</p>
+          <p id="fin-inicial" class="text-2xl font-bold text-pos-text-head mt-1">$0</p>
+        </div>
+        <div class="pos-card p-5">
+          <p class="text-sm text-pos-text-body/60">Ventas en efectivo</p>
+          <p id="fin-ventas" class="text-2xl font-bold text-pos-text-head mt-1">$0</p>
+        </div>
+        <div class="pos-card p-5">
+          <p class="text-sm text-pos-text-body/60">Ingresos manuales</p>
+          <p id="fin-ingresos" class="text-2xl font-bold text-pos-emerald mt-1">$0</p>
+        </div>
+        <div class="pos-card p-5">
+          <p class="text-sm text-pos-text-body/60">Egresos manuales</p>
+          <p id="fin-egresos" class="text-2xl font-bold text-pos-danger mt-1">$0</p>
+        </div>
+        <div class="pos-card p-5">
+          <p class="text-sm text-pos-text-body/60">Total esperado en caja</p>
+          <p id="fin-esperado" class="text-2xl font-bold text-pos-primary mt-1">$0</p>
+        </div>
+      </div>
+
+      <!-- Resumen de la ecuación de caja (recalculado en vivo) -->
+      <div class="pos-card px-5 py-4">
+        <p class="text-xs font-semibold text-pos-text-body/60 uppercase tracking-wider mb-1">Cómo se compone el total esperado</p>
+        <p id="texto-ecuacion" class="text-sm text-pos-text-body font-medium">La caja está cerrada.</p>
+        <!-- Cuenta Corriente del turno: INFORMATIVO, no suma al efectivo físico esperado. -->
+        <div id="fin-credito-fila" class="hidden items-center gap-2 mt-3 pt-3 border-t border-pos-secondary/30">
+          <span class="badge badge-neutral">Cuenta Corriente</span>
+          <p class="text-sm text-pos-text-body/70">
+            Ventas a cuenta corriente (crédito) registradas en este turno:
+            <span id="fin-credito" class="font-bold text-pos-text-head">$0</span>
+            <span class="text-pos-text-body/50">(informativas: aún no ingresan a la gaveta. Se cobran por Cuentas Corrientes.)</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Movimientos del turno -->
+      <div class="pos-card overflow-hidden">
+        <div class="px-5 py-4 border-b border-pos-secondary/40 flex items-center justify-between">
+          <h4 class="text-base font-semibold text-pos-text-head">Movimientos del turno</h4>
+        </div>
+        <div class="pos-table-wrap">
+          <table class="pos-table">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Concepto</th>
+                <th>Método</th>
+                <th>Fecha</th>
+                <th class="text-right">Monto</th>
+              </tr>
+            </thead>
+            <tbody id="movimientos-tabla">
+              <tr><td colspan="5" class="text-center text-pos-text-body/60 py-8">Sin movimientos en el turno.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ===================== MODAL ABRIR CAJA ===================== -->
+  <div id="modal-abrir" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-md bg-pos-bg rounded-xl shadow-lg p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h4 class="text-lg font-semibold text-pos-text-head">Abrir caja</h4>
+        <button type="button" class="text-pos-text-body/60 hover:text-pos-text-head" data-close>
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <form id="form-abrir" class="space-y-4">
+        <div>
+          <label class="form-label" for="monto-inicial">Monto inicial</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-3 flex items-center text-pos-text-body/60 text-sm">$</span>
+            <input id="monto-inicial" type="number" step="0.01" min="0" class="form-input-pos pl-8" required placeholder="0.00">
+          </div>
+        </div>
+        <div>
+          <label class="form-label" for="obs-apertura">Observaciones (opcional)</label>
+          <textarea id="obs-apertura" rows="2" class="form-input-pos"></textarea>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+          <button type="button" class="btn-secondary" data-close>Cancelar</button>
+          <button type="submit" class="btn-primary">Abrir caja</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL MOVIMIENTO ===================== -->
+  <div id="modal-movimiento" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-md bg-pos-bg rounded-xl shadow-lg p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h4 class="text-lg font-semibold text-pos-text-head">Registrar movimiento</h4>
+        <button type="button" class="text-pos-text-body/60 hover:text-pos-text-head" data-close>
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <form id="form-movimiento" class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="form-label" for="mov-tipo">Tipo</label>
+            <select id="mov-tipo" class="form-input-pos">
+              <option value="ingreso">Ingreso</option>
+              <option value="egreso">Egreso</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label" for="mov-monto">Monto</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-3 flex items-center text-pos-text-body/60 text-sm">$</span>
+              <input id="mov-monto" type="number" step="0.01" min="0" class="form-input-pos pl-8" required>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label class="form-label" for="mov-metodo">Método de pago</label>
+          <select id="mov-metodo" class="form-input-pos">
+            <option value="efectivo">Efectivo</option>
+            <option value="tarjeta">Tarjeta</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="mixto">Mixto</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="mov-concepto">Concepto</label>
+          <input id="mov-concepto" type="text" class="form-input-pos" placeholder="Ej. Pago de proveedor" required>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+          <button type="button" class="btn-secondary" data-close>Cancelar</button>
+          <button type="submit" class="btn-primary">Registrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL CERRAR CAJA — PASO 1: CONTEO REAL ===================== -->
+  <div id="modal-cerrar" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-md bg-pos-bg rounded-xl shadow-lg p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h4 class="text-lg font-semibold text-pos-text-head">Cerrar caja</h4>
+        <button type="button" class="text-pos-text-body/60 hover:text-pos-text-head" data-close>
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <form id="form-cerrar" class="space-y-4">
+        <!-- Total esperado en caja (del turno) según el backend -->
+        <div class="rounded-lg bg-pos-secondary/40 px-4 py-3 flex items-center justify-between">
+          <span class="text-sm text-pos-text-body">Total esperado en caja</span>
+          <span id="cc-esperado" class="text-xl font-bold text-pos-primary">$0</span>
+        </div>
+
+        <div>
+          <label class="form-label" for="monto-real">Efectivo real contado (gaveta)</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-3 flex items-center text-pos-text-body/60 text-sm">$</span>
+            <input id="monto-real" type="number" step="0.01" min="0" class="form-input-pos pl-8" required placeholder="0.00">
+          </div>
+        </div>
+
+        <!-- Diferencia calculada automáticamente (sobrante/faltante) -->
+        <p id="cc-diff" class="hidden rounded-lg px-3 py-2 text-sm"></p>
+
+        <div>
+          <label class="form-label" for="obs-cierre">Observaciones (opcional)</label>
+          <textarea id="obs-cierre" rows="2" class="form-input-pos"></textarea>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-6">
+          <button type="button" class="btn-secondary" data-close>Cancelar</button>
+          <button type="button" id="btn-cc-siguiente" class="btn-danger">Ver resumen y confirmar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL CONFIRMAR CIERRE — PASO 2: REPORTE ===================== -->
+  <div id="modal-cierre-confirm" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-lg bg-pos-bg rounded-xl shadow-lg p-6 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-2">
+        <h4 class="text-lg font-semibold text-pos-text-head">Resumen del cierre del turno</h4>
+        <button type="button" class="text-pos-text-body/60 hover:text-pos-text-head" data-close>
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <p class="text-sm text-pos-text-body/70 mb-5">Revisa el arqueo antes de confirmar el cierre definitivo del turno.</p>
+
+      <form id="form-cierre-confirm" class="space-y-4">
+        <div class="pos-table-wrap rounded-lg border border-pos-secondary/40">
+          <table class="min-w-full">
+            <thead>
+              <tr class="bg-pos-secondary/40 text-xs uppercase tracking-wider text-pos-text-head">
+                <th class="text-left px-4 py-2 font-bold">Concepto</th>
+                <th class="text-right px-4 py-2 font-bold">Importe</th>
+              </tr>
+            </thead>
+            <tbody id="resumen-cierre-tabla"></tbody>
+          </table>
+        </div>
+
+        <div class="flex items-center justify-between flex-wrap gap-2 pt-1">
+          <span class="text-sm font-semibold text-pos-text-head">Diferencia</span>
+          <span id="cierre-confirm-diff" class="badge badge-neutral text-sm px-3 py-1">—</span>
+        </div>
+        <p id="cierre-resumen-obs" class="text-sm text-pos-text-body/70"></p>
+
+        <div class="flex justify-end gap-3 mt-4">
+          <button type="button" class="btn-secondary" data-close>Volver</button>
+          <button type="submit" class="btn-danger">Confirmar cierre del turno</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JS del layout (menú responsive + cierre de modales) -->
+  <script>
+    (function () {
+      const menu = document.getElementById('menu-toggle');
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebar-overlay');
+      function closeS() { sidebar?.classList.add('-translate-x-full'); overlay?.classList.add('hidden'); }
+      function openS() { sidebar?.classList.remove('-translate-x-full'); overlay?.classList.remove('hidden'); }
+      menu?.addEventListener('click', () => sidebar?.classList.contains('-translate-x-full') ? openS() : closeS());
+      overlay?.addEventListener('click', closeS);
+      // Cierre genérico de modales
+      document.addEventListener('click', (e) => {
+        if (e.target.closest('[data-close]')) {
+          e.target.closest('[id^="modal"]').classList.add('hidden');
+          e.target.closest('[id^="modal"]').classList.remove('flex');
+        }
+      });
+    })();
+  </script>
+
+  <!-- Seguridad: backend local JWT (sin Supabase) -->
+  <script src="./services/config.js"></script>
+  <script src="./services/guard.js"></script>
+
+  <!-- JS de Caja / Arqueo -->
+  <script type="module" src="./services/caja.js"></script>
+</body>
+</html>

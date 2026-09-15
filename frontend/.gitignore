@@ -1,0 +1,13 @@
+# Dependencias
+node_modules/
+
+# Build / dist (generado)
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema y editores
+.DS_Store
+Thumbs.db

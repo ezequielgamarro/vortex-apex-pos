@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crear cuenta | Punto de Venta</title>
+  <!-- CSS compilado de Tailwind con la paleta pos-* -->
+  <link href="./dist/css/app.css" rel="stylesheet" type="text/css">
+  <!-- Anti-FOUC: aplica el tema ANTES del render (evita el flash blanco). -->
+  <script src="./services/theme.js"></script>
+</head>
+<body class="bg-pos-primary h-screen w-screen flex items-center justify-center p-4">
+
+  <div class="w-full max-w-md">
+
+    <!-- Tarjeta de registro: fondo pos-bg + sombra pos-card -->
+    <div class="bg-pos-bg shadow-pos-card rounded-2xl border border-pos-secondary/40">
+      <div class="px-6 py-8">
+
+        <!-- Marca: logo dinámico (claro/oscuro) por variante de tema -->
+        <div class="flex flex-col items-center text-center mb-10">
+          <a href="login.html" aria-label="Vortex Apex — Punto de Venta" class="flex flex-col items-center">
+            <img src="./assets/vortex apex logo modo claro login.webp" alt="VORTEX APEX" class="h-12 sm:h-14 w-auto block dark:hidden">
+            <img src="./assets/vortex apex logo modo oscuro login.webp" alt="VORTEX APEX" class="h-12 sm:h-14 w-auto hidden dark:block">
+          </a>
+        </div>
+
+        <h2 class="text-2xl font-bold text-pos-text-head text-center mb-1">Crea tu cuenta</h2>
+        <p class="text-center text-sm text-pos-text-body/70 mb-8">Regístrate para comenzar a usar el Punto de Venta</p>
+
+        <!-- Formulario de registro: Nombre + Email + Contraseña -->
+        <form id="register-form" class="space-y-4" novalidate>
+          <div>
+            <label class="form-label" for="register-nombre">Nombre</label>
+            <input id="register-nombre" type="text" class="form-input-pos" placeholder="Tu nombre completo" autocomplete="name" required>
+          </div>
+
+          <div>
+            <label class="form-label" for="register-email">Correo electrónico</label>
+            <input id="register-email" type="email" class="form-input-pos" placeholder="usuario@correo.com" autocomplete="email" required>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="form-label mb-0" for="register-password">Contraseña</label>
+              <span class="text-xs text-pos-text-body/50">Mínimo 6 caracteres</span>
+            </div>
+            <input id="register-password" type="password" class="form-input-pos" placeholder="••••••••" autocomplete="new-password" required>
+          </div>
+
+          <p id="register-error" class="hidden text-sm text-pos-danger font-medium"></p>
+
+          <!-- Botón principal -->
+          <button type="submit" class="btn-primary w-full !py-3">Crear Cuenta</button>
+        </form>
+
+      </div>
+    </div>
+
+    <!-- Link inferior -->
+    <p class="text-pos-primary-text text-center mt-6 text-sm">
+      ¿Ya tienes cuenta? <a href="login.html" class="font-semibold hover:underline">Inicia sesión</a>
+    </p>
+  </div>
+
+  <!-- Configuración de la API local -->
+  <script src="./services/config.js"></script>
+  <!-- Lógica de autenticación y registro (FastAPI local/JWT) -->
+  <script src="./services/auth.js"></script>
+</body>
+</html>

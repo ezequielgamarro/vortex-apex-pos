@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Punto de Venta</title>
+  <link href="./dist/css/app.css" rel="stylesheet" type="text/css">
+  <!-- Anti-FOUC: aplica el tema ANTES del render (evita el flash blanco). -->
+  <script src="./services/theme.js"></script>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+  <!-- ============================ SIDEBAR ============================ -->
+  <aside id="sidebar" class="fixed z-40 inset-y-0 left-0 w-64 bg-pos-bg border-r border-pos-secondary/60 transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:static" aria-label="Navegación principal">
+    <div class="flex flex-col h-full">
+      <a href="pos.html" class="flex items-center justify-center px-6 h-20 border-b border-pos-secondary/60">
+        <img src="./assets/vortex apex logo modo claro dentro del programa.webp" alt="VORTEX APEX" class="block w-full max-w-[14rem] h-auto dark:hidden">
+          <img src="./assets/vortex apex logo modo oscuro dentro del programa.webp" alt="VORTEX APEX" class="hidden w-full max-w-[14rem] h-auto dark:block">
+      </a>
+      <!-- El menú lateral es renderizado dinámicamente por guard.js (renderSidebar).
+           Single Source of Truth: no incluir enlaces estáticos aquí. -->
+      <nav id="sidebar-menu" class="flex-1 overflow-y-auto p-4 space-y-1"></nav>
+    </div>
+  </aside>
+  <div id="sidebar-overlay" class="fixed inset-0 z-30 bg-pos-overlay/50 backdrop-blur-sm lg:hidden hidden"></div>
+
+  <!-- ===================== CONTENIDO PRINCIPAL ===================== -->
+  <!-- min-h-0: en un flex-item, `min-height:auto` impide que los hijos con
+       overflow-y-auto calculen su scroll. Forzamos min-h-0 para acotar la
+       cadena de alturas y habilitar el scroll interno del catálogo. -->
+  <div class="flex flex-col flex-1 min-w-0 h-full min-h-0">
+
+    <!-- Header: altura fija; shrink-0 evita que el flex-column lo comprima. -->
+    <header class="z-20 flex items-center gap-4 px-4 sm:px-6 h-16 shrink-0 bg-pos-bg border-b border-pos-secondary/60">
+      <button id="menu-toggle" class="p-2 -ml-2 rounded-lg text-pos-text-head hover:bg-pos-secondary/40 lg:hidden" type="button" aria-label="Abrir menú">
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <h4 class="text-lg font-semibold text-pos-text-head">Punto de Venta</h4>
+      <button class="ml-auto flex items-center gap-2 p-1.5 rounded-lg hover:bg-pos-secondary/40" type="button">
+        <span class="flex items-center justify-center h-8 w-8 rounded-full bg-pos-primary text-pos-primary-text text-sm font-semibold" id="profile-initial">U</span>
+        <span class="hidden sm:block text-sm font-medium text-pos-text-body" id="profile-name">Usuario</span>
+        <span id="profile-rol"></span>
+      </button>
+    </header>
+
+    <!-- Contenido POS: flex-col en móvil, md:flex-row en escritorio.
+         min-h-0 + overflow-hidden: acota la altura al espacio restante
+         (100vh - header h-16) y delega el scroll a los paneles internos. -->
+    <main class="flex-1 flex flex-col md:flex-row p-4 sm:p-6 gap-4 sm:gap-6 min-h-0 overflow-hidden">
+
+      <!-- ======== PANEL IZQUIERDO: CATÁLOGO ======== -->
+      <!-- min-h-0: permite que el hijo flex-1/overflow-y-auto scrollee. -->
+      <div class="flex-1 flex flex-col min-w-0 min-h-0">
+        <!-- Barra de búsqueda -->
+        <div class="pos-card p-4 mb-4 shrink-0">
+          <div class="relative">
+            <span class="absolute inset-y-0 left-3 flex items-center text-pos-text-body/60">
+              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </span>
+            <input id="pos-search" type="text" class="form-input-pos pl-10" placeholder="Buscar por nombre o código de barras...">
+          </div>
+        </div>
+
+        <!-- Grid de catálogo, con scroll interno (solo esta zona scrollea).
+             El contenedor de productos es CSS GRID Tailwind puro (sin flex que
+             compita). Las clases sm:/lg:/xl: actúan como FALLBACK; las
+             Container Queries de `.pos-catalogo-wrap` (css/tailwind.css)
+             afinan las columnas por el ANCHO REAL del panel, evitando el
+             aplastamiento en monitores anchos cuando el carrito roba espacio. -->
+        <div class="flex-1 overflow-y-auto pr-1 min-h-0 pos-catalogo-wrap">
+          <div id="pos-catalogo" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+            <!-- Tarjetas de producto generadas por JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== PANEL DERECHO: CARRITO / COBRO ======== -->
+      <!-- min-h-0: el h-full de la tarjeta interna necesita un padre acotado. -->
+      <div class="w-full md:w-96 lg:w-[26rem] flex flex-col min-w-0 min-h-0">
+
+        <!-- Alerta: caja no abierta (se muestra al intentar cobrar sin caja) -->
+        <div id="error-caja-sin-abrir" class="hidden mb-4 pos-card border-pos-danger/40 p-3">
+          <div class="flex items-start gap-3">
+            <svg class="h-5 w-5 shrink-0 text-pos-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.3 3.86L1.82 18a2 2 0 001.72 3h16.94a2 2 0 001.71-3L13.7 3.86a2 2 0 00-3.4 0z"/></svg>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-pos-danger">Caja no abierta</p>
+              <p class="text-xs text-pos-text-body/80 mt-0.5">Es obligatorio abrir la caja antes de registrar cobros.</p>
+              <a href="caja.html" class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-pos-primary hover:underline">Ir a Control de Caja</a>
+            </div>
+            <button data-close-error class="text-pos-text-body/50 hover:text-pos-text-head shrink-0" aria-label="Cerrar">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- flex-1 min-h-0 (en vez de h-full): ocupa el alto RESTANTE tras la
+             alerta condicional de caja y habilita el scroll interno del carrito. -->
+        <div class="pos-card flex flex-col flex-1 min-h-0 overflow-hidden">
+
+          <!-- Lista del carrito (scroll) -->
+          <div class="flex-1 overflow-y-auto p-4 space-y-3 min-h-0" id="carrito-items">
+            <p class="text-center text-pos-text-body/60 text-sm py-8">El carrito está vacío</p>
+          </div>
+
+          <!-- Resumen y cobro (fijo al fondo, no scrollea) -->
+          <div class="border-t border-pos-secondary/40 p-2 sm:p-3 space-y-2 shrink-0 bg-pos-bg">
+            <div class="flex justify-between text-xs sm:text-sm">
+              <span class="text-pos-text-body/70">Subtotal</span>
+              <span class="font-semibold text-pos-text-head" id="carrito-subtotal">$0.00</span>
+            </div>
+            <div class="flex justify-between text-xs sm:text-sm hidden">
+              <span class="text-pos-text-body/70">Descuentos</span>
+              <span class="font-semibold text-pos-danger" id="carrito-descuentos">-$0.00</span>
+            </div>
+            <div class="flex justify-between text-sm sm:text-base font-bold">
+              <span class="text-pos-text-head">Total</span>
+              <span class="text-pos-primary" id="carrito-total">$0.00</span>
+            </div>
+
+            <!-- Método de pago -->
+            <select id="metodo-pago" class="form-input-pos !py-1.5 !text-sm">
+              <option value="efectivo">Efectivo</option>
+              <option value="tarjeta">Tarjeta</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="mixto">Mixto</option>
+              <option value="cuenta_corriente">Cuenta Corriente</option>
+            </select>
+
+            <!-- Vuelto (solo efectivo): paga con / vuelto -->
+            <div id="bloque-vuelto" class="hidden">
+              <input id="paga-con" type="number" min="0" step="1" class="form-input-pos !py-1.5 !text-sm mb-1" placeholder="Paga con ($)" inputmode="decimal">
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-pos-text-body/70">Vuelto</span>
+                <span id="vuelto-monto" class="font-bold text-pos-success">$0</span>
+              </div>
+            </div>
+
+            <!-- Cliente (nombre libre p/ efectivo/tarjeta/etc.) -->
+            <div id="bloque-cliente-libre">
+              <input id="cliente-venta" type="text" class="form-input-pos !py-1.5 !text-sm" placeholder="Cliente (opcional)">
+            </div>
+
+            <!-- Cuenta corriente: requiere SELECCIONAR un cliente del registro -->
+            <div id="bloque-cliente-cc" class="hidden">
+              <select id="select-cliente-cc" class="form-input-pos !py-1.5 !text-sm mb-1"></select>
+              <button type="button" id="btn-nuevo-cliente-cc" class="text-xs font-semibold text-pos-primary hover:underline">+ Registrar cliente nuevo</button>
+            </div>
+
+            <!-- Botón cobrar -->
+            <button id="btn-cobrar" class="btn-primary w-full !py-2 !text-sm">Cobrar venta</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ===================== MODAL: PRODUCTO POR PESO ===================== -->
+  <!-- Para productos tipo 'peso' el cajero elige entrar la venta por
+       KILOS (cantidad) o por IMPORTE ($); el backend deriva la fracción. -->
+  <div id="modal-peso" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-md bg-pos-bg rounded-xl shadow-lg p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h4 class="text-lg font-semibold text-pos-text-head" id="peso-modal-titulo">Producto por peso</h4>
+          <p class="text-xs text-pos-text-body/60 mt-0.5" id="peso-modal-precio"></p>
+        </div>
+        <button type="button" class="text-pos-text-body/60 hover:text-pos-text-head" id="btn-peso-cancelar" aria-label="Cerrar">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Modo de entrada: KILOS o IMPORTE -->
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <label class="flex items-center gap-2 border rounded-lg px-3 py-2.5 cursor-pointer border-pos-secondary/60 has-[:checked]:border-pos-primary has-[:checked]:bg-pos-primary/5">
+          <input type="radio" name="peso-modo" id="peso-modo-cantidad" value="cantidad" class="accent-pos-primary" checked>
+          <span class="text-sm font-medium text-pos-text-head">Por kilos (kg)</span>
+        </label>
+        <label class="flex items-center gap-2 border rounded-lg px-3 py-2.5 cursor-pointer border-pos-secondary/60 has-[:checked]:border-pos-primary has-[:checked]:bg-pos-primary/5">
+          <input type="radio" name="peso-modo" id="peso-modo-importe" value="importe" class="accent-pos-primary">
+          <span class="text-sm font-medium text-pos-text-head">Por importe ($)</span>
+        </label>
+      </div>
+
+      <div class="mb-5">
+        <label class="form-label mb-1.5" id="peso-valor-label" for="peso-valor">Cantidad (kg)</label>
+        <input id="peso-valor" type="number" min="0" step="0.001" class="form-input-pos" placeholder="Ej: 1.500" inputmode="decimal">
+      </div>
+
+      <div class="flex justify-end gap-3">
+        <button type="button" class="btn-secondary" id="btn-peso-cancelar-2">Cancelar</button>
+        <button type="button" class="btn-primary" id="btn-peso-agregar">Agregar al carrito</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: NUEVO CLIENTE (cuenta corriente) ===================== -->
+  <div id="modal-nuevo-cliente" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-sm bg-pos-bg rounded-xl shadow-lg p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h4 class="text-lg font-semibold text-pos-text-head">Nuevo cliente</h4>
+          <p class="text-xs text-pos-text-body/60">Se usará para la venta a cuenta corriente.</p>
+        </div>
+        <button type="button" class="text-pos-text-body/60 hover:text-pos-text-head" id="btn-cliente-cancelar" aria-label="Cerrar">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="form-label" for="cliente-nuevo-nombre">Nombre</label>
+          <input id="cliente-nuevo-nombre" type="text" class="form-input-pos" placeholder="Nombre y apellido" required>
+        </div>
+        <div>
+          <label class="form-label" for="cliente-nuevo-tel">Teléfono (opcional)</label>
+          <input id="cliente-nuevo-tel" type="text" class="form-input-pos" placeholder="Ej. 555 1234">
+        </div>
+        <div class="flex justify-end gap-3">
+          <button type="button" class="btn-secondary" id="btn-cliente-cancelar-2">Cancelar</button>
+          <button type="button" class="btn-primary" id="btn-cliente-guardar">Registrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: VENTA COMPLETADA ===================== -->
+  <!-- Post-cobro: NO se limpia el POS de inmediato. El cajero decide entre
+       iniciar una NUEVA VENTA (limpia carrito+input) o IMPRIMIR el comprobante
+       (genera el ticket y luego limpia). El folio se inyecta en #vc-folio. -->
+  <div id="modal-venta-completada" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-md bg-pos-bg rounded-xl shadow-lg p-6 animate-pop-in">
+      <div class="flex flex-col items-center text-center">
+        <span class="flex items-center justify-center h-14 w-14 rounded-full bg-pos-success/15 text-pos-success mb-3">
+          <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </span>
+        <h4 class="text-lg font-semibold text-pos-text-head">Venta completada</h4>
+        <p class="text-sm text-pos-text-body/70 mt-1">La venta se registró correctamente.</p>
+        <p class="text-sm font-bold text-pos-success mt-2">Folio: <span id="vc-folio">—</span></p>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
+        <button type="button" class="btn-secondary w-full" id="btn-vc-nueva">Nueva Venta</button>
+        <button type="button" class="btn-primary w-full" id="btn-vc-imprimir">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+          Imprimir Comprobante
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Zona de impresión del comprobante de venta (oculta en pantalla;
+       se rellena por JS y se imprime vía la regla @media print global). -->
+  <div id="area-impresion" aria-hidden="true"></div>
+
+  <!-- JS del layout (solo menú responsive; seguridad/iniciar perfil los maneja guard.js) -->
+  <script>
+    (function () {
+      const menu = document.getElementById('menu-toggle');
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebar-overlay');
+      function closeS() { sidebar?.classList.add('-translate-x-full'); overlay?.classList.add('hidden'); }
+      function openS() { sidebar?.classList.remove('-translate-x-full'); overlay?.classList.remove('hidden'); }
+      menu?.addEventListener('click', () => sidebar?.classList.contains('-translate-x-full') ? openS() : closeS());
+      overlay?.addEventListener('click', closeS);
+    })();
+  </script>
+
+  <!-- Seguridad: backend local JWT (sin Supabase) -->
+  <script src="./services/config.js"></script>
+  <script src="./services/guard.js"></script>
+
+  <!-- JS del Terminal POS -->
+  <script type="module" src="./services/pos.js"></script>
+</body>
+</html>

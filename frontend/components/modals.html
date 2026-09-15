@@ -1,0 +1,64 @@
+<!-- ============================================================
+     MODALES REUTILIZABLES
+     Patrón estándar: backdrop + panel. Se controla añadiendo la
+     clase `hidden` para ocultar y `flex` para mostrar.
+     ============================================================ -->
+
+<!-- Modal de confirmación -->
+<div id="modal-confirm" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-pos-stroke/50 backdrop-blur-sm"></div>
+
+  <!-- Panel -->
+  <div class="relative w-full max-w-md bg-pos-bg rounded-xl shadow-lg p-6">
+    <h4 class="text-lg font-semibold text-pos-text-head mb-2">¿Estás seguro?</h4>
+    <p class="text-sm text-pos-text-body mb-6">Esta acción no se puede deshacer.</p>
+
+    <div class="flex justify-end gap-3">
+      <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+      <button type="button" class="btn-danger">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de formulario -->
+<div id="modal-form" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-pos-stroke/50 backdrop-blur-sm"></div>
+
+  <!-- Panel -->
+  <div class="relative w-full max-w-lg bg-pos-bg rounded-xl shadow-lg p-6 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-5">
+      <h4 class="text-lg font-semibold text-pos-text-head">Formulario</h4>
+      <button type="button" class="text-pos-text-body/60 hover:text-pos-text-head" data-close-modal>
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Contenido del formulario (inputs) -->
+    <div class="space-y-4">
+      <!-- Colocar inputs aquí -->
+    </div>
+
+    <div class="flex justify-end gap-3 mt-6">
+      <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+      <button type="button" class="btn-primary">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Comportamiento genérico de cierre de modales
+document.addEventListener('click', (e) => {
+  const closer = e.target.closest('[data-close-modal]');
+  if (closer) {
+    const modal = closer.closest('[id^="modal"]');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+  }
+});
+</script>

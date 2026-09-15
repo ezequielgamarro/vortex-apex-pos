@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="refresh" content="0; url=login.html">
+  <title>Punto de Venta</title>
+  <link href="./dist/css/app.css" rel="stylesheet" type="text/css">
+  <!-- Anti-FOUC: aplica el tema ANTES del render (evita el flash blanco). -->
+  <script src="./services/theme.js"></script>
+</head>
+<body class="bg-pos-bg flex items-center justify-center h-screen">
+  <div class="text-center px-6">
+    <!-- Logotipo (marca completa) visible en la portada/índice -->
+    <img class="h-20 w-auto mx-auto block dark:hidden" src="./assets/vortex apex logo modo claro dentro del programa.webp" alt="VORTEX APEX">
+    <img class="h-20 w-auto mx-auto hidden dark:block" src="./assets/vortex apex logo modo oscuro dentro del programa.webp" alt="VORTEX APEX">
+    <p class="text-pos-text-body/60 text-sm mt-4">Redirigiendo al inicio de sesión...</p>
+  </div>
+  <script>
+    // Punto de entrada de la app:
+    //  - Con sesión activa → Reportes (admin) o Punto de Venta (cajero).
+    //  - Sin sesión        → login.html.
+    (function () {
+      if (localStorage.getItem('token')) {
+        var rol = localStorage.getItem('rol');
+        window.location.replace(rol === 'admin' ? 'reportes.html' : 'pos.html');
+      } else {
+        window.location.replace('login.html');
+      }
+    })();
+  </script>
+</body>
+</html>
+

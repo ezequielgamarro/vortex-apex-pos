@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventario | Punto de Venta</title>
+  <link href="./dist/css/app.css" rel="stylesheet" type="text/css">
+</head>
+<body class="flex">
+
+  <!-- ============================ SIDEBAR ============================ -->
+  <aside id="sidebar" class="fixed z-40 inset-y-0 left-0 w-64 bg-pos-bg border-r border-pos-secondary/60 transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:static" aria-label="Navegación principal">
+    <div class="flex flex-col h-full">
+      <a href="inventario.html" class="flex items-center justify-center px-6 h-20 border-b border-pos-secondary/60">
+        <img src="../assets/logotipo2.svg" alt="VORTEX APEX" class="block h-auto w-full max-w-[14rem]">
+      </a>
+      <nav class="flex-1 overflow-y-auto p-4 space-y-1">
+        <a href="pos.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-pos-text-body hover:bg-pos-secondary/40 transition-colors"><span>Terminal POS</span></a>
+        <a href="../ventas.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-pos-text-body hover:bg-pos-secondary/40 transition-colors"><span>Ventas</span></a>
+        <a href="inventario.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-pos-secondary/60 text-pos-text-head"><span>Inventario</span></a>
+        <a href="caja.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-pos-text-body hover:bg-pos-secondary/40 transition-colors"><span>Caja / Arqueo</span></a>
+        <p class="px-3 text-xs font-semibold text-pos-text-body/60 uppercase tracking-wider mt-6 mb-2">Sesión</p>
+        <a href="login.html" id="logout-btn" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-pos-danger hover:bg-pos-danger/10 transition-colors"><span>Cerrar sesión</span></a>
+      </nav>
+    </div>
+  </aside>
+  <div id="sidebar-overlay" class="fixed inset-0 z-30 bg-pos-stroke/50 backdrop-blur-sm lg:hidden hidden"></div>
+
+  <!-- ===================== CONTENIDO PRINCIPAL ===================== -->
+  <div class="flex flex-col flex-1 min-w-0">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-20 flex items-center gap-4 px-4 sm:px-6 h-16 bg-pos-bg border-b border-pos-secondary/60">
+      <button id="menu-toggle" class="p-2 -ml-2 rounded-lg text-pos-text-head hover:bg-pos-secondary/40 lg:hidden" type="button" aria-label="Abrir menú">
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <h4 class="text-lg font-semibold text-pos-text-head">Inventario</h4>
+      <button class="ml-auto flex items-center gap-2 p-1.5 rounded-lg hover:bg-pos-secondary/40" type="button">
+        <span class="flex items-center justify-center h-8 w-8 rounded-full bg-pos-primary text-pos-primary-text text-sm font-semibold" id="profile-initial">U</span>
+        <span class="hidden sm:block text-sm font-medium text-pos-text-body" id="profile-name">Usuario</span>
+        <span id="profile-rol"></span>
+      </button>
+    </header>
+
+    <!-- Contenido -->
+    <main class="p-4 sm:p-6 space-y-6">
+
+      <!-- Encabezado con acciones -->
+      <div class="flex items-center justify-between gap-4 flex-wrap">
+        <h4 class="text-xl font-bold text-pos-text-head">Productos</h4>
+        <!-- Botón nuevo producto (solo admin) -->
+        <button id="btn-nuevo" class="btn-primary">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          <span>Nuevo producto</span>
+        </button>
+      </div>
+
+      <!-- Tabla de productos -->
+      <div class="pos-card overflow-hidden">
+        <div class="pos-table-wrap">
+          <table class="pos-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Categoría</th>
+                <th>Precio</th>
+                <th>Stock</th>
+                <th>Estado</th>
+                <th class="text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-productos">
+              <tr><td colspan="7" class="text-center text-pos-text-body/60 py-8">Cargando productos...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Indicador de permisos para cajero -->
+      <p id="aviso-admin" class="hidden text-sm text-pos-text-body/60">
+        <span class="badge badge-neutral mr-1">Info</span> Solo los administradores pueden crear, editar o eliminar productos.
+      </p>
+
+    </main>
+  </div>
+
+  <!-- ===================== MODAL CREAR/EDITAR PRODUCTO ===================== -->
+  <div id="modal-producto" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <div class="absolute inset-0 bg-pos-stroke/50 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-lg bg-pos-bg rounded-xl shadow-lg p-6 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-5">
+        <h4 class="text-lg font-semibold text-pos-text-head" id="modal-producto-titulo">Nuevo producto</h4>
+        <button type="button" class="text-pos-text-body/60 hover:text-pos-text-head" data-close>
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <form id="form-producto" class="space-y-4">
+        <input type="hidden" id="prod-id">
+        <div>
+          <label class="form-label" for="prod-nombre">Nombre</label>
+          <input id="prod-nombre" type="text" class="form-input-pos" required>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="form-label" for="prod-codigo">Código de barras</label>
+            <input id="prod-codigo" type="text" class="form-input-pos" placeholder="SKU">
+          </div>
+          <div>
+            <label class="form-label" for="prod-categoria">Categoría</label>
+            <input id="prod-categoria" type="text" class="form-input-pos" placeholder="Ej. Bebidas">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="form-label" for="prod-precio">Precio</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-3 flex items-center text-pos-text-body/60 text-sm">$</span>
+              <input id="prod-precio" type="number" step="0.01" min="0" class="form-input-pos pl-8" required>
+            </div>
+          </div>
+          <div>
+            <label class="form-label" for="prod-costo">Costo</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-3 flex items-center text-pos-text-body/60 text-sm">$</span>
+              <input id="prod-costo" type="number" step="0.01" min="0" class="form-input-pos pl-8">
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="form-label" for="prod-stock">Stock</label>
+            <input id="prod-stock" type="number" min="0" class="form-input-pos" required>
+          </div>
+          <div>
+            <label class="form-label" for="prod-stock-min">Stock mínimo</label>
+            <input id="prod-stock-min" type="number" min="0" class="form-input-pos">
+          </div>
+        </div>
+        <div>
+          <label class="form-label" for="prod-descripcion">Descripción</label>
+          <textarea id="prod-descripcion" rows="2" class="form-input-pos"></textarea>
+        </div>
+        <label class="flex items-center gap-2 text-sm text-pos-text-body">
+          <input id="prod-activo" type="checkbox" class="rounded border-pos-secondary/70 text-pos-primary focus:ring-pos-primary/40" checked>
+          <span>Activo</span>
+        </label>
+        <div class="flex justify-end gap-3 mt-6">
+          <button type="button" class="btn-secondary" data-close>Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL ELIMINAR ===================== -->
+  <div id="modal-eliminar" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <div class="absolute inset-0 bg-pos-stroke/50 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-md bg-pos-bg rounded-xl shadow-lg p-6">
+      <h4 class="text-lg font-semibold text-pos-text-head mb-2">¿Eliminar producto?</h4>
+      <p class="text-sm text-pos-text-body mb-6">Se eliminará definitivamente del catálogo. Esta acción no se puede deshacer.</p>
+      <div class="flex justify-end gap-3">
+        <button type="button" class="btn-secondary" data-close>Cancelar</button>
+        <button type="button" class="btn-danger" id="btn-confirmar-eliminar">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS del layout -->
+  <script>
+    (function () {
+      const menu = document.getElementById('menu-toggle');
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebar-overlay');
+      function closeS() { sidebar?.classList.add('-translate-x-full'); overlay?.classList.add('hidden'); }
+      function openS() { sidebar?.classList.remove('-translate-x-full'); overlay?.classList.remove('hidden'); }
+      menu?.addEventListener('click', () => sidebar?.classList.contains('-translate-x-full') ? openS() : closeS());
+      overlay?.addEventListener('click', closeS);
+      // Cierre genérico de modales
+      document.addEventListener('click', (e) => {
+        if (e.target.closest('[data-close]')) {
+          e.target.closest('[id^="modal"]').classList.add('hidden');
+          e.target.closest('[id^="modal"]').classList.remove('flex');
+        }
+      });
+    })();
+  </script>
+
+  <!-- Seguridad: backend local JWT (sin Supabase) -->
+  <script src="../services/config.js"></script>
+  <script src="../services/guard.js"></script>
+
+  <!-- JS del Inventario -->
+  <script type="module" src="./services/inventario.js"></script>
+</body>
+</html>

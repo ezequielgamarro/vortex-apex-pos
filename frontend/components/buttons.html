@@ -1,0 +1,33 @@
+<!-- ============================================================
+     BOTONES REUTILIZABLES
+     Uso: las clases `.btn-primary`, `.btn-secondary`, `.btn-danger`
+     están definidas en css/tailwind.css (@layer components).
+     Para variantes inline, usar estas clases base compuestas.
+     ============================================================ -->
+
+<!-- Botón primario (acción principal) -->
+<button type="button" class="btn-primary">
+  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+  </svg>
+  <span>Insertar aquí</span>
+</button>
+
+<!-- Botón primario con texto plano (sin icono) -->
+<button type="button" class="btn-primary">Guardar cambios</button>
+
+<!-- Botón secundario (acción neutra) -->
+<button type="button" class="btn-secondary">Cancelar</button>
+
+<!-- Botón peligro (eliminar / acción destructiva) -->
+<button type="button" class="btn-danger">
+  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+  </svg>
+  <span>Eliminar</span>
+</button>
+
+<!-- Botón pequeño para tablas / acciones inline -->
+<button type="button" class="btn-secondary !px-3 !py-1.5 text-xs">Editar</button>
+<button type="button" class="btn-danger !px-3 !py-1.5 text-xs">Quitar</button>

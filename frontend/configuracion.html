@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuración | Punto de Venta</title>
+  <link href="./dist/css/app.css" rel="stylesheet" type="text/css">
+  <!-- Anti-FOUC: aplica el tema ANTES del render (evita el flash blanco). -->
+  <script src="./services/theme.js"></script>
+</head>
+<body class="flex">
+
+  <!-- ============================ SIDEBAR ============================ -->
+  <aside id="sidebar" class="fixed z-40 inset-y-0 left-0 w-64 bg-pos-bg border-r border-pos-secondary/60 transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:static" aria-label="Navegación principal">
+    <div class="flex flex-col h-full">
+      <a href="pos.html" class="flex items-center justify-center px-6 h-20 border-b border-pos-secondary/60">
+        <img src="./assets/vortex apex logo modo claro dentro del programa.webp" alt="VORTEX APEX" class="block w-full max-w-[14rem] h-auto dark:hidden">
+        <img src="./assets/vortex apex logo modo oscuro dentro del programa.webp" alt="VORTEX APEX" class="hidden w-full max-w-[14rem] h-auto dark:block">
+      </a>
+      <!-- El menú lateral es renderizado dinámicamente por guard.js (renderSidebar). -->
+      <nav id="sidebar-menu" class="flex-1 overflow-y-auto p-4 space-y-1"></nav>
+    </div>
+  </aside>
+  <div id="sidebar-overlay" class="fixed inset-0 z-30 bg-pos-overlay/50 backdrop-blur-sm lg:hidden hidden"></div>
+
+  <!-- ===================== CONTENIDO PRINCIPAL ===================== -->
+  <div class="flex flex-col flex-1 min-w-0">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-20 flex items-center gap-4 px-4 sm:px-6 h-16 bg-pos-bg border-b border-pos-secondary/60">
+      <button id="menu-toggle" class="p-2 -ml-2 rounded-lg text-pos-text-head hover:bg-pos-secondary/40 lg:hidden" type="button" aria-label="Abrir menú">
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <h4 class="text-lg font-semibold text-pos-text-head">Configuración</h4>
+      <button class="ml-auto flex items-center gap-2 p-1.5 rounded-lg hover:bg-pos-secondary/40" type="button">
+        <span class="flex items-center justify-center h-8 w-8 rounded-full bg-pos-primary text-pos-primary-text text-sm font-semibold" id="profile-initial">U</span>
+        <span class="hidden sm:block text-sm font-medium text-pos-text-body" id="profile-name">Usuario</span>
+        <span id="profile-rol"></span>
+      </button>
+    </header>
+
+    <!-- Contenido -->
+    <main class="p-4 sm:p-6 space-y-6 max-w-3xl">
+
+      <!-- Datos del negocio -->
+      <section class="pos-card p-6">
+        <div class="flex items-center gap-3 mb-1">
+          <!-- Icono tuerca: refuerza la metáfora de "ajustes del negocio". -->
+          <svg class="h-5 w-5 text-pos-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          </svg>
+          <h4 class="text-lg font-semibold text-pos-text-head">Datos del negocio</h4>
+        </div>
+        <p class="text-sm text-pos-text-body/70 mb-5">
+          Este nombre se imprime como encabezado en los tickets de venta y de cierre de caja.
+        </p>
+
+        <form id="form-negocio" class="space-y-4" novalidate>
+          <div>
+            <label class="form-label" for="neg-nombre">Nombre del negocio</label>
+            <input id="neg-nombre" type="text" class="form-input-pos" maxlength="200"
+                   placeholder="Ej: Almacén Don José" autocomplete="off">
+            <p class="text-xs text-pos-text-body/60 mt-1.5">
+              Dejalo vacío para no imprimir encabezado en los tickets.
+            </p>
+          </div>
+          <div id="neg-error" class="hidden text-sm text-pos-danger font-medium"></div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button type="button" id="btn-neg-revertir" class="btn-secondary">Descartar cambios</button>
+            <button type="submit" id="btn-neg-guardar" class="btn-primary">Guardar</button>
+          </div>
+        </form>
+
+        <p id="neg-actualizado" class="text-xs text-pos-text-body/50 mt-4 hidden"></p>
+      </section>
+
+      <!-- Vista previa del ticket -->
+      <section class="pos-card p-6">
+        <h4 class="text-lg font-semibold text-pos-text-head mb-1">Vista previa del ticket</h4>
+        <p class="text-sm text-pos-text-body/70 mb-4">Así se verá el encabezado en la impresora térmica (80&nbsp;mm).</p>
+        <div class="flex justify-center bg-pos-secondary/20 rounded-lg p-4">
+          <div class="ticket border border-dashed border-pos-secondary/60 rounded">
+            <div id="ticket-preview-negocio" class="t-center t-neg"></div>
+            <div class="t-sep">================================</div>
+            <div class="t-izq">COMPROBANTE DE VENTA</div>
+            <div class="t-sep">--------------------------------</div>
+            <table class="tb-detalle">
+              <tr><td class="t-izq">Producto de ejemplo</td><td class="t-der">$1.500</td></tr>
+            </table>
+            <div class="t-sep">--------------------------------</div>
+            <table class="tb-total">
+              <tr><td class="t-neg">TOTAL</td><td class="t-der t-neg">$1.500</td></tr>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- JS del layout (menú responsive) -->
+  <script>
+    (function () {
+      const menu = document.getElementById('menu-toggle');
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebar-overlay');
+      function closeS() { sidebar?.classList.add('-translate-x-full'); overlay?.classList.add('hidden'); }
+      function openS() { sidebar?.classList.remove('-translate-x-full'); overlay?.classList.remove('hidden'); }
+      menu?.addEventListener('click', () => sidebar?.classList.contains('-translate-x-full') ? openS() : closeS());
+      overlay?.addEventListener('click', closeS);
+    })();
+  </script>
+
+  <!-- Seguridad: backend local JWT (sin Supabase) -->
+  <script src="./services/config.js"></script>
+  <script src="./services/guard.js"></script>
+
+  <!-- JS de configuración del negocio -->
+  <script type="module" src="./services/configuracion.js"></script>
+</body>
+</html>

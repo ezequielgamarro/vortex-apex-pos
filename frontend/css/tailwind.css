@@ -1,0 +1,374 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   TOKENS DE TEMA (light / dark) — Design System del POS
+   ------------------------------------------------------------
+   Valores como canales RGB ("R G B") para que Tailwind aplique
+   la opacidad con rgb(var(--x) / <alpha-value>) (ver tailwind.config.js).
+   - :root  = tema CLARO  (valores originales del proyecto).
+   - .dark  = tema OSCURO (sobre-escritura coherente).
+   La clase `.dark` la inyecta theme.js en <html> según la preferencia
+   del usuario (localStorage) o el sistema (prefers-color-scheme).
+   ============================================================ */
+:root {
+  --pos-bg: 255 255 254;          /* #fffffe */
+  --pos-text-head: 43 44 52;      /* #2b2c34 */
+  --pos-text-body: 43 44 52;      /* #2b2c34 */
+  --pos-primary: 98 70 234;       /* #6246ea */
+  --pos-primary-text: 255 255 254;/* #fffffe */
+  --pos-secondary: 209 209 233;   /* #d1d1e9 */
+  --pos-stroke: 43 44 52;         /* #2b2c34 */
+  --pos-danger: 228 88 88;        /* #e45858 */
+
+  /* Éxito (verde): confirmaciones de cobro y toasts OK. Mismo patrón RGB
+     que el resto de tokens para habilitar la opacidad (bg-pos-success/15)
+     y el cambio de tema claro/oscuro. */
+  --pos-success: 22 163 74;       /* green-600: contraste AA sobre blanco */
+
+  /* Overlay de modales/sidebar: oscuro en ambos temas (difumina el fondo). */
+  --pos-overlay: 43 44 52;        /* #2b2c34 */
+
+  /* Superficie de "tarjeta": separada del fondo para dar profundidad en dark.
+     En claro es idéntica al fondo (efecto original) para no alterar el look. */
+  --pos-card: 255 255 254;
+}
+
+.dark {
+  /* Fondo oscuro tipo slate-900 y superficies slate-800 (coherentes). */
+  --pos-bg: 15 23 42;             /* #0f172a */
+  --pos-text-head: 248 250 252;   /* #f8fafc */
+  --pos-text-body: 203 213 225;   /* #cbd5e1 */
+  --pos-primary: 129 140 248;     /* indigo-400: sube luminosidad para contraste */
+  --pos-primary-text: 15 23 42;   /* texto oscuro sobre el primario claro */
+  --pos-secondary: 51 65 85;      /* slate-700 */
+  --pos-stroke: 148 163 184;      /* slate-400 */
+  --pos-danger: 248 113 113;      /* red-400 */
+  --pos-success: 74 222 128;      /* green-400: sube luminosidad p/ contraste */
+
+  /* Overlay sigue oscuro en dark (aunque el fondo ya es oscuro, mantiene el
+     efecto de difuminado/atenuación del modal). */
+  --pos-overlay: 0 0 0;           /* negro puro */
+
+  /* Tarjetas un punto más claras que el fondo -> jerarquía visual. */
+  --pos-card: 30 41 59;           /* slate-800 */
+}
+
+@layer base {
+  body {
+    @apply bg-pos-bg text-pos-text-body font-base antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-pos-text-head font-semibold;
+  }
+}
+
+@layer components {
+  /* Tarjeta base reutilizable.
+     Superficie = token --pos-card (por defecto = fondo en claro; más claro
+     que el fondo en dark, dando jerarquía sin tocar el HTML). */
+  .pos-card {
+    @apply border border-pos-secondary/60 rounded-xl shadow-pos-card;
+    background-color: rgb(var(--pos-card));
+  }
+
+  /* Botón primario */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
+           bg-pos-primary text-pos-primary-text text-sm font-semibold
+           hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-pos-primary/50
+           transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Botón secundario */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
+           bg-pos-secondary text-pos-text-head text-sm font-semibold
+           hover:opacity-90 focus:outline-none transition-colors duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Botón peligro */
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
+           bg-pos-danger text-pos-primary-text text-sm font-semibold
+           hover:opacity-90 focus:outline-none transition-colors duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Input base */
+  .form-input-pos {
+    @apply w-full px-3 py-2.5 rounded-lg border border-pos-secondary/70
+           bg-pos-bg text-pos-text-body text-sm
+           focus:outline-none focus:ring-2 focus:ring-pos-primary/40 focus:border-pos-primary
+           transition-colors duration-200;
+  }
+
+  /* Etiqueta */
+  .form-label {
+    @apply block text-xs font-semibold text-pos-text-head mb-1.5;
+  }
+
+  /* Contenedor de tabla */
+  .pos-table-wrap {
+    @apply overflow-x-auto;
+  }
+
+  .pos-table {
+    @apply min-w-full divide-y divide-pos-secondary/40;
+  }
+
+  .pos-table thead {
+    @apply bg-pos-secondary/40;
+  }
+
+  .pos-table th {
+    @apply px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-pos-text-head;
+  }
+
+  .pos-table tbody {
+    @apply divide-y divide-pos-secondary/30;
+  }
+
+  .pos-table td {
+    @apply px-6 py-4 text-sm text-pos-text-body;
+  }
+
+  /* Badge de rol */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-primary { @apply bg-pos-primary/15 text-pos-primary; }
+  .badge-danger  { @apply bg-pos-danger/15 text-pos-danger; }
+  .badge-success { @apply bg-pos-success/15 text-pos-success; }
+  /* "Poco stock": ámbar legible en claro; en oscuro sube a un naranja brillante
+     con fondo translúcido para mantener contraste sobre superficies oscuras. */
+  .badge-warning { @apply bg-amber-400/25 text-amber-700 dark:bg-orange-900/50 dark:text-orange-400; }
+  .badge-neutral { @apply bg-pos-secondary/50 text-pos-text-head; }
+}
+
+/* ============================================================
+   SCROLLBAR (Modo Oscuro)
+   ------------------------------------------------------------
+   La barra por defecto (blanca) rompe la inmersión del tema oscuro.
+   Sólo afectamos `.dark` para no alterar la apariencia en claro.
+   Usamos colores derivados de la paleta slate (coherentes con
+   --pos-bg / --pos-card). WebKit + fallback estándar (Firefox).
+   ============================================================ */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: rgb(var(--pos-card));        /* slate-800 */
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563;                      /* gray-600: gris medio visible */
+  border-radius: 4px;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;                      /* gray-500 */
+}
+/* Fallback estándar (Firefox) */
+.dark {
+  scrollbar-color: #4b5563 rgb(var(--pos-card));
+  scrollbar-width: thin;
+}
+@layer utilities {
+  @keyframes pos-toast-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-toast-in {
+    animation: pos-toast-in 0.2s ease-out;
+  }
+
+  /* Entrada de modales/overlays (scale+fade). Reutilizable por el modal de
+     "Venta Completada" y por las alertas flotantes. */
+  @keyframes pos-pop-in {
+    from { opacity: 0; transform: scale(0.95) translateY(4px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .animate-pop-in {
+    animation: pos-pop-in 0.18s ease-out;
+  }
+}
+
+/* ============================================================
+   CATÁLOGO DEL POS — GRILLA RESPONSIVE POR CONTENEDOR
+   ------------------------------------------------------------
+   PROBLEMA QUE RESUELVE:
+   La grilla de productos debe ser responsive, pero el catálogo vive en un
+   panel izquierdo cuyo ancho REAL depende de si el carrito (w-96/26rem) está
+   visible al lado. Si las columnas se atan al VIEWPORT (sm:/lg:/xl:), en
+   ciertos anchos el panel real es mucho más angosto que su breakpoint y las
+   tarjetas se aplastan / encogen de forma irregular en monitores anchos.
+
+   SOLUCIÓN (fuente verificada):
+   CSS Containment Module Level 3 — Container Queries (W3C). El número de
+   columnas se decide por el ancho REAL del contenedor (@container), no por
+   el viewport. Soporte estable en Chromium/Electron (motor de esta app).
+
+   El contenedor `#pos-catalogo` es un Grid Tailwind puro (clases `grid`,
+   `grid-cols-1`, `gap-4` en el HTML). Estas reglas SÓLO ajustan
+   `grid-template-columns` según el ancho del contenedor `.pos-catalogo-wrap`.
+   ============================================================ */
+.pos-catalogo-wrap {
+  container-type: inline-size;
+  container-name: catalogo;
+}
+
+/* Columnas según el ANCHO DEL CONTENEDOR (equivalen a los breakpoints
+   Tailwind 2→3→4→5→6 pero medidos en el panel, no en la ventana). */
+@container catalogo (min-width: 22rem) { #pos-catalogo { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container catalogo (min-width: 34rem) { #pos-catalogo { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@container catalogo (min-width: 46rem) { #pos-catalogo { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@container catalogo (min-width: 58rem) { #pos-catalogo { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@container catalogo (min-width: 70rem) { #pos-catalogo { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+
+/* ============================================================
+   TICKET DE CIERRE DE CAJA (imprimible)
+   ------------------------------------------------------------
+   - En pantalla, el contenedor `#area-impresion` está oculto y el
+     ticket no se dibuja hasta pulsar "Imprimir".
+   - Al imprimir, la regla `@media print` oculta TODA la interfaz
+     (aside, header, main, menús) y muestra únicamente el `.ticket`
+     con un ancho tipo impresora térmica (~80 mm).
+   ============================================================ */
+
+/* Oculta la zona de impresión en pantalla (se rellena por JS). */
+#area-impresion { display: none; }
+
+/* Molde del ticket: ocupa el 100% del ancho imprimible, tope 80mm
+   (papel térmico estándar). El ancho real del contenedor lo impone
+   `#area-impresion`/`@page` en la regla @media print. */
+.ticket {
+  display: block;
+  width: 100%;
+  max-width: 80mm;
+  margin: 0 auto;
+  padding: 4mm 2mm;
+  background: #fff;
+  color: #000;
+  /* Fuente clara para impresoras térmicas: Courier New primero (requisito),
+     con fallbacks monospace del sistema si no está disponible. */
+  font-family: 'Courier New', Courier, ui-monospace, 'SFMono-Regular',
+               'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Ayudas de alineación / texto del ticket */
+.t-izq     { text-align: left; }
+.t-der     { text-align: right; }
+.t-center  { text-align: center; }
+.t-neg     { font-weight: 700; }
+.t-muted   { color: #555; }
+.t-sep     { letter-spacing: 0; white-space: pre; }
+
+.t-label {
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 10px;
+  margin: 1mm 0 0.5mm;
+}
+.t-obs {
+  font-size: 10px;
+  margin: 1mm 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Tablas internas del ticket (sin colapsar columnas). */
+.tb-detalle,
+.tb-total {
+  width: 100%;
+  border-collapse: collapse;
+}
+.tb-detalle td {
+  padding: 0.2mm 0;
+  vertical-align: top;
+}
+.tb-total td {
+  padding: 0.5mm 0;
+  vertical-align: top;
+  border-top: 1px dashed #aaa;
+}
+.tb-total tr:first-child td { border-top: none; }
+.tb-total td.t-der,
+.tb-detalle td.t-der { white-space: nowrap; }
+
+/* ============================================================
+   REGLA DE IMPRESIÓN (@media print)
+   ------------------------------------------------------------
+   Oculta la aplicación (navegación, tablas, encabezados) y deja
+   únicamente visible el ticket generado. Combina dos técnicas:
+     1) `visibility:hidden` sobre el body, reactivando SÓLO la zona
+        del ticket (patrón clásico → sin saltos de página).
+     2) `display:none` sobre los contenedores de la interfaz
+        (aside/header/main), tal como pide la especificación.
+   ============================================================ */
+@media print {
+  /* Dimensiones del rollo térmico: 80mm de ancho fijo, alto AUTO (continuo,
+     sin cortes de página). Estándar de ticketera tipo Epson TM-T20 / 80mm. */
+  @page {
+    margin: 0;
+    size: 80mm auto;
+  }
+
+  /* Ancho físico del documento impreso. NO tocamos <html> (no gobierna papel);
+     el ancho lo impone el body y el contenedor del ticket (80mm). */
+  body {
+    visibility: hidden;
+    width: 80mm;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  /* 2) se eliminan los bloques de la interfaz de pantalla. */
+  aside,
+  header,
+  main,
+  nav,
+  button,
+  #sidebar-overlay,
+  .no-print,
+  script {
+    display: none !important;
+  }
+
+  /* Sólo se imprime la zona del ticket, reposicionada arriba, a 80mm. */
+  #area-impresion {
+    display: block !important;
+    visibility: visible;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm;
+    max-width: 80mm;
+    padding: 2mm;
+    margin: 0;
+    font-family: 'Courier New', Courier, ui-monospace, monospace;
+    font-size: 12px;
+    color: #000 !important;
+    background: #fff !important;
+  }
+  #area-impresion,
+  #area-impresion * {
+    visibility: visible;
+  }
+
+  /* Reafirma el ancho del ticket dentro del contenedor impreso. */
+  .ticket {
+    width: 100% !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+  }
+}
+
