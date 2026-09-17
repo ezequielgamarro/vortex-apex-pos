@@ -231,8 +231,33 @@ export const api = {
   bestSelling: (since, until, limite = 10) =>
     authFetch(`/reportes/mas-vendidos?fecha_desde=${since}&fecha_hasta=${until}&limite=${limite}`),
 
-  /* ---------- Licencia SaaS ---------- */
+        /* ---------- Exportación total (respaldo de datos) ---------- */
+  // Descarga un .xlsx con TODAS las hojas de respaldo del negocio
+  // (Productos, Ventas, Caja, Clientes). Solo admin. Funciona aun con la
+  // licencia vencida: el backend NO bloquea este GET (principio de no
+  // secuestrar los datos del comercio).
+  exportarTodoExcel: async () => {
+    const token = getToken();
+    const res = await fetch(`${baseUrl()}/exportar-todo`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error(await parseDetail(res));
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'respaldo_vortex_apex.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
+
+    /* ---------- Licencia SaaS ---------- */
   licenciaEstado: () => authFetch('/licencia/estado'),
+  // Huella de ESTA máquina: el cliente la copia y la envía al proveedor.
+  licenciaHuella: () => authFetch('/licencia/huella'),
+  // Activa con un CÓDIGO FIRMADO por el proveedor (verificado con Ed25519).
   licenciaActivar: (data) =>
     authFetch('/licencia/activar', { method: 'POST', body: data }),
 };

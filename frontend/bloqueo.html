@@ -22,41 +22,55 @@
           <p id="bloqueo-contacto" class="text-center text-sm text-pos-text-body font-semibold mb-6"></p>
         </div>
 
-        <!-- Formulario visible solo para ADMIN -->
-        <form id="activacion-form" class="space-y-4 hidden" novalidate>
+                <!-- Panel de activación por CÓDIGO FIRMADO, visible solo para ADMIN.
+             Nuevo flujo (Etapa 2): NO se ingresa clave ni fecha. El cliente
+             COPIA su huella y se la envía al proveedor; este devuelve un código
+             firmado que se pega aquí. El backend lo verifica con la llave
+             pública Ed25519 (el usuario no elige fechas). -->
+        <div id="activacion-panel" class="hidden">
           <div class="border-t border-pos-secondary/40 pt-4">
-            <h3 class="text-sm font-semibold text-pos-text-head mb-4 text-center">Activación de Licencia (Admin)</h3>
-            
-            <div>
-              <label class="form-label" for="licencia-cliente-id">Cliente ID</label>
-              <input id="licencia-cliente-id" type="text" class="form-input-pos" required>
+            <h3 class="text-sm font-semibold text-pos-text-head mb-3 text-center">Activación de Licencia (Admin)</h3>
+
+            <!-- Paso 1: huella de la máquina -->
+            <label class="form-label">Paso 1 — Enviá este código a tu proveedor</label>
+            <div class="flex gap-2 mb-4">
+              <input id="licencia-huella" type="text" class="form-input-pos font-mono text-xs" readonly>
+              <button type="button" id="btn-copiar-huella" class="btn-secondary whitespace-nowrap px-3">Copiar</button>
             </div>
 
-            <div>
-              <label class="form-label" for="licencia-fecha">Nueva Fecha Vencimiento</label>
-              <!-- Usando datetime-local, que requiere un formato específico para value. -->
-              <input id="licencia-fecha" type="datetime-local" class="form-input-pos" required>
-            </div>
-            
-            <div>
-              <label class="form-label" for="licencia-gracia">Días de Gracia</label>
-              <input id="licencia-gracia" type="number" class="form-input-pos" value="3" min="0" required>
-            </div>
+            <!-- Paso 2: pegar el código firmado recibido -->
+            <form id="activacion-form" class="space-y-2" novalidate>
+              <label class="form-label" for="licencia-codigo">Paso 2 — Pegá el código de activación recibido</label>
+              <textarea id="licencia-codigo" class="form-input-pos font-mono text-xs" rows="3"
+                        placeholder="VX1...." required></textarea>
 
-            <div>
-              <label class="form-label" for="licencia-clave">Clave de Activación</label>
-              <input id="licencia-clave" type="password" class="form-input-pos" required>
-            </div>
+              <p id="activacion-error" class="hidden text-sm text-pos-danger font-medium text-center"></p>
+              <p id="activacion-success" class="hidden text-sm text-green-600 font-medium text-center"></p>
 
-            <p id="activacion-error" class="hidden text-sm text-pos-danger font-medium text-center"></p>
-            <p id="activacion-success" class="hidden text-sm text-green-600 font-medium text-center"></p>
+              <button type="submit" id="btn-activar" class="btn-primary w-full !py-3 mt-2">Activar Licencia</button>
+            </form>
 
-            <button type="submit" id="btn-activar" class="btn-primary w-full !py-3 mt-2">Activar Licencia</button>
+            <!-- WhatsApp opcional: abre el mensaje con la huella ya escrita.
+                 NO requiere internet en el POS: solo abre la app/Web de WhatsApp. -->
+            <button type="button" id="btn-whatsapp" class="btn-secondary w-full !py-2 mt-3 hidden">
+              Enviar huella por WhatsApp
+            </button>
           </div>
-        </form>
+        </div>
         
-        <div class="mt-6 flex justify-center">
+                <div class="mt-6 flex justify-center">
             <button id="btn-logout" type="button" class="text-pos-danger hover:underline text-sm font-medium">Cerrar Sesión</button>
+        </div>
+
+        <!-- Descarga de respaldo completo: sección independiente del panel admin
+             porque es un DERECHO del comercio (sus datos), no una acción de
+             activación. El backend solo la autoriza para rol admin. -->
+        <div class="mt-4 pt-4 border-t border-pos-secondary/40">
+            <button type="button" id="btn-descargar-datos"
+                    class="btn-secondary w-full !py-2.5">
+              Descargar todos mis datos (Excel)
+            </button>
+            <p id="descarga-msg" class="hidden text-center text-xs mt-2"></p>
         </div>
 
       </div>

@@ -1,6 +1,18 @@
 # Environment files
 .env
 
+# ============================================================================
+# LLAVES DE LICENCIAS (CRÍTICO: NUNCA subir al repositorio)
+# ----------------------------------------------------------------------------
+# La llave privada permite EMITIR licencias válidas. Si se filtra, cualquiera
+# puede generar activaciones. Si perdés esta llave, perdés la capacidad de
+# firmar. Hacé BACKUP en un medio seguro (gestor de contraseñas / USB cifrado),
+# NUNCA en Git ni en la nube pública.
+# ============================================================================
+*.key
+*.pem
+tools_licencia/*.key
+
 # Python
 __pycache__/
 *.py[cod]
@@ -58,7 +70,13 @@ htmlcov/
 logs/
 
 # Bases de datos locales (se generan en tiempo de ejecución / reset)
+# Incluye sus copias de respaldo (.bak_preseed, .bak, etc.): contienen usuarios
+# y hashes de contraseña, NUNCA deben subirse a un repositorio.
 pos_local.db
+pos_local.db.*
+*.db
+*.bak
+*.bak_*
 *.sqlite
 *.sqlite3
 *.backup.sqlite

@@ -26,6 +26,7 @@ from app.routers import (
     cuentas,
     configuracion,
     licencia,
+    exportar,
 )
 
 
@@ -197,6 +198,9 @@ app.include_router(categorias.router, prefix=settings.API_PREFIX)
 app.include_router(cuentas.router, prefix=settings.API_PREFIX)
 app.include_router(configuracion.router, prefix=settings.API_PREFIX)
 app.include_router(licencia.router, prefix=settings.API_PREFIX)
+# Exportación total de datos (respaldo). GET -> NO se bloquea por licencia,
+# y NO vive bajo los prefijos bloqueados: disponible aun con licencia vencida.
+app.include_router(exportar.router, prefix=settings.API_PREFIX)
 
 # Servir la carpeta dist compilada si existe (permite resolver /dist/* directamente)
 _dist_dir = _ruta_dist()

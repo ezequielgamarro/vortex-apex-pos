@@ -29,10 +29,10 @@ class EstadoLicencia:
     """Resultado de evaluar la licencia (contrato estable para la API)."""
 
     cliente_id: str
-    estado: str            # activa | por_vencer | gracia | vencida | suspendida
-    bloqueada: bool        # True => el middleware debe cortar operaciones
+    estado: str  # activa | por_vencer | gracia | vencida | suspendida
+    bloqueada: bool  # True => el middleware debe cortar operaciones
     fecha_actual: datetime
-    fuente_hora: str       # externa | cache | delta_local | reloj_local
+    fuente_hora: str  # externa | cache | delta_local | reloj_local
     fecha_vencimiento: datetime | None
     dias_restantes: int | None
     mensaje: str
@@ -78,9 +78,7 @@ def evaluar(db: Session, persistir_ping: bool = False) -> EstadoLicencia:
     if lic.ultimo_ping is not None and fecha_actual < lic.ultimo_ping:
         fecha_actual = lic.ultimo_ping
 
-    if persistir_ping and (
-        lic.ultimo_ping is None or fecha_actual > lic.ultimo_ping
-    ):
+    if persistir_ping and (lic.ultimo_ping is None or fecha_actual > lic.ultimo_ping):
         lic.ultimo_ping = fecha_actual
         lic.actualizado_en = now_utc()
         db.commit()
@@ -170,19 +168,35 @@ def evaluar(db: Session, persistir_ping: bool = False) -> EstadoLicencia:
     )
 
 
-# Rutas de escritura (cobro de ventas, etc.) que se bloquean si la licencia
-# está vencida. Las lecturas y la propia gestión de licencia SIEMPRE pasan,
-# para que el negocio pueda consultar sus datos y pagar/regularizar.
-PREFIJOS_BLOQUEADOS = ("/ventas", "/arqueo")
+# Rutas de escritura (cobro de ventas, caja y catálogo) que se bloquean si la
+# licencia está vencida. Las lecturas y la propia gestión de licencia SIEMPRE
+# pasan, para que el negocio pueda consultar sus datos y pagar/regularizar.
+#
+# NOTA (por qué /productos): el bloqueo por mora debe impedir OPERAR el
+# negocio, no solo facturar. Un moroso que puede seguir creando/editando
+# productos y cargando stock sigue derivando valor del sistema sin pagarlo.
+# Por eso se bloquea la ESCRITURA del catálogo (crear/editar/borrar/importar),
+# PERO se mantiene libre la lectura y el export a Excel (GET /productos/exportar),
+# en coherencia con el principio de NO secuestrar los datos del comercio.
+PREFIJOS_BLOQUEADOS = ("/ventas", "/arqueo", "/productos")
 METODOS_ESCRITURA = {"POST", "PUT", "PATCH", "DELETE"}
 
 
 def requiere_bloqueo(metodo: str, path: str) -> bool:
     """True si el request debe bloquearse por licencia vencida.
 
-    Se bloquea SOLO la operación transaccional (cobrar/abrir-cerrar caja), no
-    la lectura. Anular una venta es POST a /ventas/{id}/anular y también se
-    bloquea (coherente). El login, perfil y /licencia/estado nunca se bloquean.
+    Se bloquea SOLO la ESCRITURA (POST/PUT/PATCH/DELETE) sobre las rutas de
+    operatoria del negocio (ventas, caja y catálogo de productos), nunca la
+    lectura. Así un moroso no puede facturar, ni abrir/cerrar caja, ni crear,
+    editar, borrar o importar productos, PERO sí puede consultar y exportar
+    sus datos (GET), en coherencia con el principio de no secuestrar la
+    información del comercio.
+
+    Casos concretos:
+      - Anular una venta (POST /ventas/{id}/anular) -> se bloquea.
+      - Exportar catálogo (GET /productos/exportar) -> NO se bloquea (lectura).
+      - Importar catálogo (POST /productos/importar) -> se bloquea (escritura).
+      - El login, perfil y /licencia/* nunca se bloquean (permiten regularizar).
     """
     if metodo not in METODOS_ESCRITURA:
         return False

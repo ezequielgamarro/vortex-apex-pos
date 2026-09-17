@@ -1,14 +1,21 @@
-"""Módulo 6 — Router de licencia (estado + activación/sincronización).
+"""Módulo 6 — Router de licencia (estado + huella + activación por código firmado).
 
 Endpoints:
-  GET  /licencia/estado   -> estado actual (público autenticado; lo consulta
-                             el frontend para decidir si mostrar la pantalla de
+  GET  /licencia/estado   -> estado actual (público autenticado; lo consulta el
+                             frontend para decidir si mostrar la pantalla de
                              bloqueo). Fuerza/persiste el ping de hora.
-  POST /licencia/activar  -> carga/renueva la licencia con un `cliente_id` y
-                             `fecha_vencimiento` (lo ejecuta el instalador o un
-                             admin con la clave del SuperAdmin).
+  GET  /licencia/huella   -> huella de ESTA máquina (para mostrarla al cliente y
+                             que se la envíe al proveedor).
+  POST /licencia/activar  -> activa/renueva con un CÓDIGO FIRMADO por el
+                             proveedor. Verifica con la llave pública Ed25519.
+
+MODELO DE SEGURIDAD (Etapa 2 — código firmado):
+  Ya NO existe una "clave de activación" compartida ni el cliente elige su
+  fecha. El proveedor firma un código ligado a la huella de esta máquina y a una
+  fecha de vencimiento; el POS solo VERIFICA. Esto elimina el agujero previo
+  (el cliente con la clave se auto-extendía). Ver `app/services/licencia_firma.py`.
 """
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -18,6 +25,11 @@ from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user, UsuarioActual
 from app.models import Licencia, now_utc
+from app.services.licencia_firma import (
+    LlavePublicaNoDisponible,
+    calcular_huella,
+    verificar_codigo_para_maquina,
+)
 from app.services.licencia_service import evaluar
 
 router = APIRouter(prefix="/licencia", tags=["Licencia"])
@@ -36,15 +48,37 @@ class LicenciaEstadoOut(BaseModel):
     contacto: str = ""
 
 
+class HuellaOut(BaseModel):
+    """Huella de la máquina: la muestra el POS y el cliente la envía al proveedor."""
+
+    cliente_id: str
+    huella: str
+
+
 class ActivarLicenciaIn(BaseModel):
-    cliente_id: str = Field(..., min_length=1, max_length=120)
-    fecha_vencimiento: datetime = Field(
-        ..., description="Nueva fecha de vencimiento (ISO 8601)"
+    # Código firmado por el proveedor (formato VX1.<payload>.<firma>).
+    codigo_firmado: str = Field(..., min_length=10)
+
+
+def _cliente_id_actual(db: Session) -> str:
+    """Devuelve el `cliente_id` de la licencia singleton (o 'demo')."""
+    lic = db.query(Licencia).first()
+    return lic.cliente_id if lic and lic.cliente_id else "demo"
+
+
+def _estado_out(est, mensaje: str | None = None) -> LicenciaEstadoOut:
+    """Serializa el estado de licencia al contrato HTTP (DRY)."""
+    return LicenciaEstadoOut(
+        cliente_id=est.cliente_id,
+        estado=est.estado,
+        bloqueada=est.bloqueada,
+        fecha_actual=est.fecha_actual,
+        fuente_hora=est.fuente_hora,
+        fecha_vencimiento=est.fecha_vencimiento,
+        dias_restantes=est.dias_restantes,
+        mensaje=mensaje if mensaje is not None else est.mensaje,
+        contacto=getattr(settings, "LICENCIA_CONTACTO", "") or "",
     )
-    dias_gracia: int = Field(3, ge=0, le=60)
-    # Clave de activación (token compartido con el SuperAdmin). Evita que un
-    # usuario cualquiera extienda su propia licencia sin permiso.
-    clave_activacion: str
 
 
 @router.get("/estado", response_model=LicenciaEstadoOut, summary="Estado de la licencia")
@@ -54,51 +88,85 @@ def estado_licencia(
 ):
     """Devuelve el estado de la licencia y refuerza el anti-trampas (ping)."""
     est = evaluar(db, persistir_ping=True)
-    return LicenciaEstadoOut(
-        cliente_id=est.cliente_id,
-        estado=est.estado,
-        bloqueada=est.bloqueada,
-        fecha_actual=est.fecha_actual,
-        fuente_hora=est.fuente_hora,
-        fecha_vencimiento=est.fecha_vencimiento,
-        dias_restantes=est.dias_restantes,
-        mensaje=est.mensaje,
-        contacto=getattr(settings, "LICENCIA_CONTACTO", "") or "",
-    )
+    return _estado_out(est)
+
+
+@router.get(
+    "/huella",
+    response_model=HuellaOut,
+    summary="Huella de esta máquina (para solicitar activación)",
+)
+def huella_maquina(
+    usuario: UsuarioActual = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Devuelve la huella de ESTA máquina según el `cliente_id` de la licencia.
+
+    El cliente la COPIA y se la envía al proveedor (WhatsApp) para que este
+    firme una licencia a su medida. La huella no es secreta: sin la firma del
+    proveedor no activa nada.
+    """
+    cid = _cliente_id_actual(db)
+    return HuellaOut(cliente_id=cid, huella=calcular_huella(cid))
 
 
 @router.post(
     "/activar",
     response_model=LicenciaEstadoOut,
-    summary="Activar/renovar licencia (admin + clave de activación)",
+    summary="Activar/renovar licencia con un código firmado",
 )
 def activar_licencia(
     data: ActivarLicenciaIn,
     usuario: UsuarioActual = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Carga o renueva la licencia. Requiere clave de activación válida."""
+    """Activa o renueva la licencia a partir de un CÓDIGO FIRMADO.
+
+    Requiere ser admin. El código debe haber sido emitido por el proveedor
+    (firma Ed25519 válida), ser para ESTA máquina (huella) y contener la fecha
+    de vencimiento. NO se confía en datos que ingrese el usuario.
+
+    Fail-secure: si falta la llave pública o el código no es válido, se rechaza.
+    """
     if usuario.rol != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo un administrador puede activar la licencia.",
         )
 
-    esperada = getattr(settings, "CLAVE_ACTIVACION", "") or "ACTIVACION-DEMO"
-    if data.clave_activacion != esperada:
+    cid = _cliente_id_actual(db)
+
+    try:
+        resultado = verificar_codigo_para_maquina(data.codigo_firmado, cid)
+    except LlavePublicaNoDisponible:
+        # Fail-secure: sin llave pública no se puede verificar nada.
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Clave de activación inválida.",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Esta instalación no tiene la llave de verificación del "
+                "proveedor. Contactá al soporte para completar la instalación."
+            ),
         )
 
+    if not resultado.valido:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Código de activación rechazado: {resultado.motivo}",
+        )
+
+    # Código válido: aplicar fecha/gracia FIRMADAS (no las que diga el usuario).
     lic = db.query(Licencia).first()
     if lic is None:
         lic = Licencia(id=1)
         db.add(lic)
 
-    lic.cliente_id = data.cliente_id
-    lic.fecha_vencimiento = data.fecha_vencimiento.replace(tzinfo=None)
-    lic.dias_gracia = data.dias_gracia
+    lic.cliente_id = cid
+    # La fecha firmada es date; se guarda como datetime (medianoche) para
+    # comparar contra `evaluar`, que trabaja con datetime.
+    lic.fecha_vencimiento = datetime.combine(
+        resultado.fecha_vencimiento, datetime.min.time()
+    )
+    lic.dias_gracia = int(resultado.dias_gracia or 0)
     lic.estado = "activa"
     lic.ultimo_ping = now_utc()
     lic.actualizado_en = now_utc()
@@ -106,14 +174,4 @@ def activar_licencia(
     db.refresh(lic)
 
     est = evaluar(db, persistir_ping=True)
-    return LicenciaEstadoOut(
-        cliente_id=est.cliente_id,
-        estado=est.estado,
-        bloqueada=est.bloqueada,
-        fecha_actual=est.fecha_actual,
-        fuente_hora=est.fuente_hora,
-        fecha_vencimiento=est.fecha_vencimiento,
-        dias_restantes=est.dias_restantes,
-        mensaje="Licencia activada correctamente.",
-        contacto=getattr(settings, "LICENCIA_CONTACTO", "") or "",
-    )
+    return _estado_out(est, mensaje="Licencia activada correctamente.")

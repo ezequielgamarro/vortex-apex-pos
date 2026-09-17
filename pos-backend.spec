@@ -50,6 +50,46 @@ for root, dirs, files in os.walk(frontend_dir):
 # para garantizar resolución tanto en /dist como en /frontend/dist
 datas.append(('frontend/dist', 'dist'))
 
+# ---------------------------------------------------------------------------
+# LLAVE PÚBLICA DE LICENCIAS (CRÍTICO)
+# ---------------------------------------------------------------------------
+# El POS necesita `app/licencia_public.key` para VERIFICAR los códigos firmados
+# (ver app/services/licencia_firma.cargar_llave_publica). Sin ella, la activación
+# falla por fail-secure. En PyInstaller onefile, `__file__` de
+# app/services/licencia_firma.py resuelve a sys._MEIPASS/app/services/... y
+# cargar_llave_publica busca en `parent.parent` = sys._MEIPASS/app. Por eso el
+# archivo se empaqueta con destino 'app'.
+licencia_pub = Path('app') / 'licencia_public.key'
+if not licencia_pub.exists():
+    raise SystemExit(
+        f"\n[ERROR BUILD] No se encontró la llave pública: '{licencia_pub}'.\n"
+        "Es necesaria para verificar licencias. Copiala desde tools_licencia/.\n"
+    )
+datas.append((str(licencia_pub), 'app'))
+
+# ---------------------------------------------------------------------------
+# GUARDA DE SEGURIDAD: la LLAVE PRIVADA nunca debe empaquetarse
+# ---------------------------------------------------------------------------
+# `tools_licencia/` contiene vortex_private.key (la llave del PROVEEDOR). Si esa
+# llave se filtra dentro del .exe, cualquiera podría firmar licencias válidas.
+# Esta guarda ABORTA la compilación si detecta que la privada o la carpeta de
+# herramientas entraron al bundle (datas o binaries). Es defensa en profundidad:
+# aunque hoy solo se recorre 'frontend/', protege ante cambios futuros.
+_PROHIBIDOS = ('vortex_private.key', 'tools_licencia')
+def _contiene_privada(coleccion):
+    for tupla in coleccion:
+        for parte in tupla:
+            if isinstance(parte, str) and any(p in parte for p in _PROHIBIDOS):
+                return True
+    return False
+
+if _contiene_privada(datas):
+    raise SystemExit(
+        "\n[ERROR BUILD] SEGURIDAD: se detectó 'tools_licencia/' o la llave "
+        "privada dentro de los datos a empaquetar. La llave privada NUNCA debe "
+        "incluirse en el .exe del cliente. Abortando compilación.\n"
+    )
+
 a = Analysis(
     ['app/server.py'],
     pathex=[],

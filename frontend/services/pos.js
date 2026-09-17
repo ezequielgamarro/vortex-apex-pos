@@ -13,6 +13,7 @@
  */
 import { api } from './api.js';
 import { mostrarAlerta, exponerUIglobal } from './ui.js';
+import { instalarAtajosPOS } from './atajos.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -666,6 +667,23 @@ function reiniciarPOS() {
 }
 
 /**
+ * Vacía el carrito en frío (atajo Ctrl+Delete). Pide confirmación porque es
+ * una acción destructiva con riesgo de pérdida de trabajo del cajero.
+ * Si el carrito está vacío, no hace nada.
+ */
+function vaciarCarrito() {
+  if (!carrito.length) {
+    mostrarAlerta('El carrito ya está vacío', 'warn');
+    return;
+  }
+  const ok = window.confirm('¿Vaciar todo el carrito? Se quitarán los productos cargados.');
+  if (!ok) return;
+  carrito = [];
+  renderCarrito();
+  mostrarAlerta('Carrito vaciado', 'ok');
+}
+
+/**
  * Construye el HTML del comprobante de venta en el contenedor #area-impresion
  * (mismo patrón verificado que el ticket de cierre de caja: `.ticket` + la
  * regla @media print global) y dispara window.print().
@@ -923,6 +941,13 @@ async function init() {
   exponerUIglobal();
 
   $('btn-cobrar').addEventListener('click', cobrar);
+
+  // Atajos de teclado (F1 buscar, F2 cobrar, F4 nueva venta, F8 imprimir,
+  // Esc cerrar modal, Ctrl+Del vaciar). Ver services/atajos.js.
+  instalarAtajosPOS();
+  // Ctrl+Del (atajos.js) emite este evento para no duplicar la lógica de
+  // vaciado (Single Source of Truth: pos.js es el dueño del estado `carrito`).
+  window.addEventListener('pos-vaciar-carrito', vaciarCarrito);
 
   // Modal "Venta Completada": Nueva Venta (limpia) / Imprimir (ticket + limpia).
   $('btn-vc-nueva').addEventListener('click', reiniciarPOS);

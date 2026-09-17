@@ -1,2 +1,32 @@
-npm run build:full
+# =============================================================================
+# Dependencias del backend (FastAPI + SQLite) — Vortex Apex POS
+# -----------------------------------------------------------------------------
+# Instalación:
+#   python -m venv app/.venv
+#   app/.venv/Scripts/pip install -r app/requirements.txt   (Windows)
+#
+# NOTA: `cryptography` es CRÍTICO para el sistema de licencias firmadas
+# (firma/verificación Ed25519, RFC 8032). Ver app/services/licencia_firma.py.
+# =============================================================================
+
+fastapi==0.141.1
+uvicorn==0.53.0
+SQLAlchemy==2.0.53
+pydantic==2.13.5
+pydantic-settings==2.15.0
+python-multipart==0.0.32
+
+# Seguridad (JWT local + hashing de contraseñas)
+python-jose==3.5.0
+bcrypt==5.0.0
+
+# Licencias firmadas (Ed25519) — firma y verificación offline
+cryptography==50.0.1
+
+# Utilidades
+python-dotenv==1.2.3
+openpyxl==3.1.5
+
+# Cliente HTTP (usado por la fuente de hora externa / anti-trampas y tests)
+httpx==0.28.1
 

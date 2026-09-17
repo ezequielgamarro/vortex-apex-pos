@@ -411,6 +411,18 @@
       });
       if (licRes.ok) {
         var lic = await licRes.json();
+
+        // GUARDIA DE ENTRADA: si la licencia está vencida (bloqueada), se
+        // redirige a la pantalla de bloqueo/activación ANTES de renderizar la
+        // vista. Sin esto, un moroso podía seguir navegando con GET (el
+        // middleware solo devuelve 402 al ESCRIBIR). Se evita el bucle cuando
+        // ya estamos en bloqueo.html.
+        if ((lic.bloqueada === true || lic.estado === 'vencida') &&
+            window.location.pathname.indexOf('bloqueo.html') === -1) {
+          window.location.replace('bloqueo.html');
+          return;
+        }
+
         if (lic.estado === 'por_vencer' || lic.estado === 'gracia') {
           var mainEl = document.querySelector('main');
           if (mainEl) {

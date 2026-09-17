@@ -56,6 +56,22 @@
 }
 
 @layer base {
+  /* ============================================================
+     ESCALA GLOBAL DE LA INTERFAZ (density)
+     ------------------------------------------------------------
+     Toda la UI del POS usa unidades `rem` de Tailwind (texto, paddings,
+     alturas, gaps). Estas son RELATIVAS a este `font-size` de la raíz.
+     Por lo tanto, cambiar SOLO este valor escala la app completa de forma
+     proporcional y consistente (patrón estándar de Tailwind/CSS).
+              100%    = 16px (escala original)
+       93.75%  = 15px (interfaz ~6% más compacta)
+       87.5%   = 14px (interfaz ~12% más compacta)  <-- valor actual
+     Para agrandar: >100% (p. ej. 106.25% = 17px).
+     ============================================================ */
+    html {
+    font-size: 87.5%;
+  }
+
   body {
     @apply bg-pos-bg text-pos-text-body font-base antialiased;
   }

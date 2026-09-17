@@ -37,8 +37,28 @@
   // se sobreescribe cuando guard.js resuelve la sesión. Dejarlo vacío ('')
   // evita imprimir la marca del software si la BD no tiene nombre cargado.
   // ============================================================
-  const NEGOCIO_NOMBRE = '';
+    const NEGOCIO_NOMBRE = '';
+
+  // ============================================================
+  // WHATSAPP DEL PROVEEDOR (activación de licencia)
+  // ------------------------------------------------------------
+  // Número al que el cliente envía su HUELLA para pedir activación.
+  // Formato internacional SOLO dígitos, SIN '+' ni espacios.
+  // Ejemplo Argentina: 5491123456789 (54 + 9 + área + número).
+  //
+  // Si queda vacío (''), el botón "Enviar huella por WhatsApp" NO se
+  // muestra en la pantalla de licencia; el cliente aún puede COPIAR la
+  // huella manualmente y enviarla como prefiera.
+  //
+  // IMPORTANTE: este botón NO requiere internet en el POS. Solo abre
+  // la app/Web de WhatsApp con el mensaje pre-armado; el envío real lo
+  // hace el teléfono del usuario.
+  // ============================================================
+    // Número del proveedor (Vortex). Formato internacional, solo dígitos:
+  // Argentina = 54 + 9 + área + número  ->  5493812071952
+  const WHATSAPP_PROVEEDOR = '5493812071952';
 
   window.API_BASE_URL = API_BASE_URL;
   window.NEGOCIO_NOMBRE = window.NEGOCIO_NOMBRE || NEGOCIO_NOMBRE;
+  window.WHATSAPP_PROVEEDOR = window.WHATSAPP_PROVEEDOR || WHATSAPP_PROVEEDOR;
 })();
