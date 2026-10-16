@@ -1,0 +1,226 @@
+========================================================================
+  PUNTO DE VENTA  -  GUIA DE INSTALACION PARA TESTEO (DESARROLLO)
+  Stack: Electron 31 + Frontend (Tailwind) + Backend Python/FastAPI
+========================================================================
+
+Esta guia lista TODO lo que debes tener instalado en tu maquina de
+desarrollo para poder EJECUTAR y PROBAR el programa (modo testing).
+NO cubre el empaquetado del instalador final (ver seccion 8).
+
+Entorno de referencia usado: Windows x64, PowerShell.
+(Si tu maquina de testeo es 32 bits real, lee la seccion 9 ANTES.)
+
+
+------------------------------------------------------------------------
+1. FUNDAMENTALES (obligatorios)
+------------------------------------------------------------------------
+
+[X] Node.js  (v18 LTS o superior; se probo con v24)
+    - Incluye npm.
+    - Descarga: https://nodejs.org/
+    - Verificar:  node -v   /   npm -v
+
+[X] Python 3.11 o 3.12  (RECOMENDADO)
+    - Se instalo Python 3.14 en esta maquina, PERO 3.11/3.12 es mas
+      seguro para dependencias de FastAPI/SQLAlchemy y para PyInstaller.
+    - Marca la casilla "Add Python to PATH" durante la instalacion.
+    - Verificar:  python --version
+    - Descarga: https://www.python.org/downloads/
+
+[X] Git
+    - Necesario si clonas el repo o usas herramientas que lo invocan.
+    - Verificar:  git --version
+    - Descarga: https://git-scm.com/
+
+
+------------------------------------------------------------------------
+2. DEPENDENCIAS DE NODE (raiz del proyecto)
+------------------------------------------------------------------------
+
+Desde la carpeta RAIZ del proyecto (donde esta package.json), ejecuta:
+
+    npm install
+
+Esto instala (segun package.json):
+[X] electron              (^31.3.0)   -> shell de escritorio
+[X] electron-builder      (^24.13.3)  -> empaquetado/instalador
+
+Instalacion manual equivalente si hiciera falta:
+    npm install --save-dev electron@^31.3.0 electron-builder@^24.13.3
+
+
+------------------------------------------------------------------------
+3. DEPENDENCIAS DEL FRONTEND (carpeta /frontend)
+------------------------------------------------------------------------
+
+El CSS se compila con Tailwind ANTES de empaquetar el backend
+(ver pos-backend.spec: exige que exista frontend/dist/css/app.css).
+
+Desde la carpeta /frontend:
+
+    npm install
+    npm run build:css        <-- genera frontend/dist/css/app.css
+
+Esto instala Tailwind CSS y sus utilidades de build (postcss, etc.).
+Si el script no existe aun, instala manualmente:
+    npm install tailwindcss postcss --save-dev
+
+
+------------------------------------------------------------------------
+4. ENTORNO VIRTUAL DE PYTHON (carpeta /app)
+------------------------------------------------------------------------
+
+El proyecto usa un venv en:  app/.venv
+Los scripts de build lo invocan asi:
+    app\.venv\Scripts\python.exe
+
+Crear el venv (una sola vez):
+
+    cd app
+    python -m venv .venv
+    .\.venv\Scripts\activate
+
+Actualizar pip:
+
+    python -m pip install --upgrade pip
+
+
+------------------------------------------------------------------------
+5. DEPENDENCIAS PYTHON DEL BACKEND
+------------------------------------------------------------------------
+
+El backend es FASTAPI servido por UVICORN, con SQLAlchemy como ORM
+(se ve en app/database.py, app/models.py) y firma de licencias con
+cryptografia asimetrica (app/services/licencia_firma.py).
+
+Instala dentro del venv activado:
+
+[X] fastapi
+[X] uvicorn[standard]
+[X] sqlalchemy
+[X] pydantic           (lo trae fastapi, pero fijarlo es util)
+[X] pydantic-settings  (por app/config.py -> settings)
+[X] cryptography       (firma/verificacion de licencias)
+[X] python-dotenv      (lectura de .env)
+[X] python-multipart   (si hay endpoints de formularios/uploads)
+
+Comando:
+
+    pip install fastapi "uvicorn[standard]" sqlalchemy pydantic ^
+                pydantic-settings cryptography python-dotenv python-multipart
+
+Si el proyecto ya trae un requirements.txt, USA ESE:
+    pip install -r requirements.txt
+
+(Para testing tambien suele hacer falta:)
+[X] pytest   y   [X] httpx   ->  pip install pytest httpx
+
+
+------------------------------------------------------------------------
+6. HERRAMIENTAS DE EMPAQUETADO (solo si vas a compilar el .exe)
+------------------------------------------------------------------------
+
+Necesario para generar dist/pos-backend.exe con PyInstaller:
+
+    pip install pyinstaller
+
+El proyecto usa: app\.venv\Scripts\python.exe -m PyInstaller pos-backend.spec
+
+
+------------------------------------------------------------------------
+7. ARCHIVOS DE CONFIGURACION / RECURSOS (criticos)
+------------------------------------------------------------------------
+
+[X] Archivo .env
+    Copia el ejemplo y ajusta valores:
+        copy .env.example .env
+    Revisa: rutas de BD, CLAVE_ACTIVACION, LICENCIA_CONTACTO, etc.
+
+[X] app/licencia_public.key
+    LLAVE PUBLICA que verifica los codigos firmados de licencia.
+    Si no existe, la activacion FALLA por fail-secure.
+    Se obtiene de la carpeta tools_licencia/ del proveedor.
+
+[X] frontend/dist/css/app.css
+    Generado por "npm run build:css" (paso 3).
+    Sin este archivo el backend no arranca en build.
+
+[X] Base de datos
+    SQLite local (pos_local.db). Hay un respaldo: pos_local.db.bak_preseed
+    Scripts utiles de inicializacion:
+        python seed_user.py
+        python seed_massive_data.py
+        python reset_db.py
+        python reset_admin.py
+
+
+------------------------------------------------------------------------
+8. FLUJO PARA LEVANTAR EN MODO TESTING (sin empaquetar)
+------------------------------------------------------------------------
+
+Terminal A  (backend FastAPI):
+    cd app
+    .\.venv\Scripts\activate
+    uvicorn app.main:app --reload --port 8000
+
+Terminal B  (shell Electron):
+    cd <raiz-del-proyecto>
+    npm start
+
+Resumen de scripts disponibles (package.json):
+    npm start            -> abre Electron apuntando al backend
+    npm run build:css    -> compila Tailwind
+    npm run build:backend-> genera pos-backend.exe (PyInstaller)
+    npm run build:full   -> build:css + build:backend
+    npm run build:installer / npm run dist  -> instalador NSIS completo
+    npm run dist:dir     -> salida sin instalador (--dir)
+    npm run pack         -> electron-builder --win nsis
+
+
+------------------------------------------------------------------------
+9. IMPORTANTE SOBRE 32 BITS (LEER)
+------------------------------------------------------------------------
+
+Si tu maquina de testeo es FISICAMENTE de 32 bits (x86/IA-32):
+
+  * Electron 31 NO tiene binarios para 32 bits.
+    Chromium/Electron abandonaron IA-32 a partir de Electron 4 (2018).
+    Por lo tanto la app Electron NO correra en 32 bits con la version
+    actual del proyecto.
+
+  * Para testear en 32 bits tendrias que:
+      - Usar una version MUY antigua de Electron (3.x) -> INSEGURO, o
+      - Reemplazar Electron por otro contenedor que soporte ia32
+        (ej. PyWebView), o
+      - Instalar un Windows de 64 bits si la CPU es x64.
+
+  * El BACKEND (Python) SI puede compilarse para 32 bits usando un
+    Python de 32 bits -> PyInstaller genera pos-backend.exe x86.
+
+Conclusion: en una maquina 32 bits real, hoy puede correr el BACKEND
+pero NO el shell Electron actual. Resolver esto es un cambio de
+arquitectura, no una simple bandera de build.
+
+
+------------------------------------------------------------------------
+10. CHECKLIST RAPIDO
+------------------------------------------------------------------------
+
+  [ ] Node.js + npm instalados
+  [ ] Python 3.11/3.12 instalados y en PATH
+  [ ] Git instalado
+  [ ] npm install (raiz)
+  [ ] npm install + build:css (frontend)
+  [ ] venv creado en app/.venv
+  [ ] dependencias Python instaladas en el venv
+  [ ] pyinstaller instalado (si vas a empaquetar)
+  [ ] .env creado desde .env.example
+  [ ] app/licencia_public.key presente
+  [ ] frontend/dist/css/app.css generado
+  [ ] BD inicializada (seed_user.py / reset_db.py)
+  [ ] backend levantado con uvicorn
+  [ ] shell abierto con npm start
+
+========================================================================
+  Fin de la guia.
+========================================================================

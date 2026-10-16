@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.errors import detalle_error_interno
 from app.database import get_db
 from app.dependencies import requiere_rol, UsuarioActual
 from app.models import Venta, VentaItem, Producto, Arqueo
@@ -106,7 +107,7 @@ def resumen_ventas(
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al consultar resumen de ventas: {str(exc)}",
+            detail=detalle_error_interno("Error al consultar resumen de ventas", exc),
         )
 
 
@@ -169,7 +170,7 @@ def productos_mas_vendidos(
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al consultar más vendidos: {str(exc)}",
+            detail=detalle_error_interno("Error al consultar más vendidos", exc),
         )
 
 
@@ -375,5 +376,5 @@ def dashboard(
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al consultar dashboard: {str(exc)}",
+            detail=detalle_error_interno("Error al consultar dashboard", exc),
         )

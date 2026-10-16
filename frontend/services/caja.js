@@ -3,7 +3,7 @@
  * Consulta la caja activa, permite abrir, registrar movimientos y cerrar el turno.
  */
 import { api } from './api.js';
-import { mostrarAlerta } from './ui.js';
+import { mostrarAlerta, esc } from './ui.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -93,15 +93,15 @@ function renderResumen(resumen) {
   tbody.innerHTML = '';
   const movs = resumen.movimientos || [];
   if (!movs.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-pos-text-body/60 py-6">Sin movimientos en el turno.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-pos-text-body/70 py-6">Sin movimientos en el turno.</td></tr>';
     return;
   }
   movs.sort((a, b) => new Date(a.fecha) - new Date(b.fecha)).forEach((m) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><span class="badge ${m.tipo === 'ingreso' ? 'badge-primary' : 'badge-danger'}">${m.tipo}</span></td>
-      <td>${m.concepto || '—'}</td>
-      <td>${m.metodo_pago || '—'}</td>
+      <td><span class="badge ${m.tipo === 'ingreso' ? 'badge-primary' : 'badge-danger'}">${esc(m.tipo)}</span></td>
+      <td>${esc(m.concepto || '—')}</td>
+      <td>${esc(m.metodo_pago || '—')}</td>
       <td>${fmtDate(m.fecha)}</td>
       <td class="text-right font-semibold ${m.tipo === 'ingreso' ? '' : 'text-pos-danger'}">${m.tipo === 'ingreso' ? '+' : '-'}${money(m.monto)}</td>`;
     tbody.appendChild(tr);
@@ -126,7 +126,7 @@ async function cargar() {
     const filaF = $('fin-credito-fila');
     if (filaF) { filaF.classList.remove('flex'); filaF.classList.add('hidden'); }
     if ($('texto-ecuacion')) $('texto-ecuacion').textContent = 'La caja está cerrada. Abre un turno para comenzar.';
-    $('movimientos-tabla').innerHTML = '<tr><td colspan="5" class="text-center text-pos-text-body/60 py-6">La caja está cerrada.</td></tr>';
+    $('movimientos-tabla').innerHTML = '<tr><td colspan="5" class="text-center text-pos-text-body/70 py-6">La caja está cerrada.</td></tr>';
   }
 }
 
@@ -222,7 +222,7 @@ function prepararConfirmacion() {
 
   if ($('resumen-cierre-tabla')) {
     const filaCredito = r.credito > 0
-      ? `<tr><td class="py-2 text-pos-text-body/80">Ventas a Cuenta Corriente <span class="text-pos-text-body/50">— se cobran por Cuentas Corrientes</span></td><td class="py-2 text-right font-medium text-pos-text-body/80">${money(r.credito)}</td></tr>`
+      ? `<tr><td class="py-2 text-pos-text-body/80">Ventas a Cuenta Corriente <span class="text-pos-text-body/70">— se cobran por Cuentas Corrientes</span></td><td class="py-2 text-right font-medium text-pos-text-body/80">${money(r.credito)}</td></tr>`
       : '';
     $('resumen-cierre-tabla').innerHTML = `
       <tbody class="divide-y divide-pos-secondary/30 text-sm">

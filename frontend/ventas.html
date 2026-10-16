@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Historial de Ventas | Punto de Venta</title>
+  <link rel="icon" type="image/png" href="./assets/favicon.png">
   <link href="./dist/css/app.css" rel="stylesheet" type="text/css">
   <!-- Anti-FOUC: aplica el tema ANTES del render (evita el flash blanco). -->
   <script src="./services/theme.js"></script>
@@ -11,15 +12,15 @@
 <body class="flex">
 
   <!-- ============================ SIDEBAR ============================ -->
-  <aside id="sidebar" class="fixed z-40 inset-y-0 left-0 w-64 bg-pos-bg border-r border-pos-secondary/60 transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:static" aria-label="Navegación principal">
+  <aside id="sidebar" class="rail fixed z-40 inset-y-0 left-0 w-64 transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:self-start shrink-0" aria-label="Navegación principal">
     <div class="flex flex-col h-full">
-      <a href="ventas.html" class="flex items-center justify-center px-6 h-20 border-b border-pos-secondary/60">
-        <img src="./assets/vortex apex logo modo claro dentro del programa.webp" alt="VORTEX APEX" class="block w-full max-w-[14rem] h-auto dark:hidden">
-          <img src="./assets/vortex apex logo modo oscuro dentro del programa.webp" alt="VORTEX APEX" class="hidden w-full max-w-[14rem] h-auto dark:block">
+      <a href="pos.html" class="flex items-center px-6 h-16 shrink-0" aria-label="Vortex Apex, ir al inicio">
+        <img src="./assets/vx-wordmark-sobre-claro.webp" alt="VORTEX APEX" width="1000" height="78" class="block dark:hidden w-full max-w-[11.5rem] h-auto">
+        <img src="./assets/vx-wordmark-sobre-oscuro.webp" alt="VORTEX APEX" width="1000" height="82" class="hidden dark:block w-full max-w-[11.5rem] h-auto">
       </a>
       <!-- El menú lateral es renderizado dinámicamente por guard.js (renderSidebar).
            Single Source of Truth: no incluir enlaces estáticos aquí. -->
-      <nav id="sidebar-menu" class="flex-1 overflow-y-auto p-4 space-y-1"></nav>
+      <nav id="sidebar-menu" class="flex-1 overflow-y-auto px-3 pb-4 pt-3 space-y-1" aria-label="Secciones"></nav>
     </div>
   </aside>
   <div id="sidebar-overlay" class="fixed inset-0 z-30 bg-pos-overlay/50 backdrop-blur-sm lg:hidden hidden"></div>
@@ -28,12 +29,12 @@
   <div class="flex flex-col flex-1 min-w-0">
 
     <!-- Header -->
-    <header class="sticky top-0 z-20 flex items-center gap-4 px-4 sm:px-6 h-16 bg-pos-bg border-b border-pos-secondary/60">
-      <button id="menu-toggle" class="p-2 -ml-2 rounded-lg text-pos-text-head hover:bg-pos-secondary/40 lg:hidden" type="button" aria-label="Abrir menú">
+    <header class="sticky top-0 z-20 flex items-center gap-4 px-4 sm:px-6 h-16 bg-pos-card border-b border-pos-secondary/70">
+      <button id="menu-toggle" class="icon-btn -ml-2 lg:hidden" type="button" aria-label="Abrir menú">
         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
-      <h4 class="text-lg font-semibold text-pos-text-head">Historial de Ventas</h4>
-      <button class="ml-auto flex items-center gap-2 p-1.5 rounded-lg hover:bg-pos-secondary/40" type="button">
+      <h4 class="font-marca text-base font-semibold text-pos-text-head">Historial de Ventas</h4>
+      <button class="ml-auto flex items-center gap-2 p-1.5 rounded-xl hover:bg-pos-secondary/50 transition-colors" type="button">
         <span class="flex items-center justify-center h-8 w-8 rounded-full bg-pos-primary text-pos-primary-text text-sm font-semibold" id="profile-initial">U</span>
         <span class="hidden sm:block text-sm font-medium text-pos-text-body" id="profile-name">Usuario</span>
         <span id="profile-rol"></span>
@@ -47,7 +48,7 @@
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 class="text-2xl font-bold text-pos-text-head">Ventas del historial</h1>
-          <p class="text-sm text-pos-text-body/70 mt-1">Agrupadas por fecha. Haz clic en cada día para ver sus tickets.</p>
+          <p class="text-sm text-pos-text-body/70 mt-1">Agrupadas por fecha. Abrí un día y tocá una venta para ver su ticket completo.</p>
         </div>
         <button id="btn-refrescar" class="btn-secondary">
           <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -56,14 +57,14 @@
       </div>
 
       <!-- Vaciado -->
-      <div id="historial-vacio" class="hidden pos-card p-10 text-center text-pos-text-body/60">
+      <div id="historial-vacio" class="hidden pos-card p-10 text-center text-pos-text-body/70">
         <svg class="h-12 w-12 mx-auto mb-3 text-pos-text-body/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h2m4 0h4M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z"/></svg>
         <p class="font-medium text-pos-text-head">Aún no hay ventas registradas.</p>
         <p class="text-sm mt-1">Los tickets aparecerán aquí agrupados por fecha.</p>
       </div>
 
       <!-- Loading / Error -->
-      <p id="historial-cargando" class="text-pos-text-body/60 text-sm">Cargando ventas…</p>
+      <p id="historial-cargando" class="text-pos-text-body/70 text-sm">Cargando ventas…</p>
       <div id="historial-error" class="hidden text-pos-danger text-sm font-medium"></div>
 
       <!-- Acordeones de fechas -->
@@ -79,10 +80,28 @@
 
     </main>
   </div>
+
+  <!-- ===================== PANEL LATERAL: TICKET ===================== -->
+  <div id="panel-venta-overlay" class="fixed inset-0 z-30 bg-pos-overlay/40 hidden"></div>
+  <aside id="panel-venta" class="fixed inset-y-0 right-0 z-40 w-full sm:w-[26rem] bg-pos-card border-l border-pos-secondary/70 shadow-2xl flex flex-col translate-x-full transition-transform duration-200" aria-label="Detalle de la venta" aria-hidden="true">
+    <div class="flex items-center justify-between gap-3 px-5 h-16 shrink-0 border-b border-pos-secondary/70">
+      <div class="min-w-0">
+        <p class="text-xs font-semibold uppercase tracking-wider text-pos-text-body/70">Ticket</p>
+        <p id="panel-folio" class="font-mono text-base font-semibold text-pos-primary truncate"></p>
+      </div>
+      <button type="button" id="panel-cerrar" class="icon-btn" aria-label="Cerrar detalle">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="panel-cuerpo" class="flex-1 overflow-y-auto px-5 py-4 space-y-4"></div>
+    <div id="panel-acciones" class="shrink-0 border-t border-pos-secondary/70 p-4 hidden">
+      <button type="button" id="panel-anular" class="btn-danger w-full">Anular venta</button>
+    </div>
+  </aside>
     <!-- ===================== MODAL: ANULAR VENTA ===================== -->
   <div id="modal-anular" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
     <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
-    <div class="relative w-full max-w-md bg-pos-bg rounded-xl shadow-lg p-6">
+    <div class="relative w-full max-w-md pos-modal p-6">
       <h4 class="text-lg font-semibold text-pos-text-head mb-2">¿Anular esta venta?</h4>
       <p class="text-sm text-pos-text-body mb-4">
         Venta <span class="font-mono font-semibold" id="anular-folio"></span>. Esta acción repone el stock al inventario y revierte la cuenta corriente. Queda registrada en el historial con su estado "Anulada".
@@ -102,17 +121,7 @@
     </div>
   </div>
   <!-- JS del layout (menú responsive) -->
-  <script>
-    (function () {
-      const menu = document.getElementById('menu-toggle');
-      const sidebar = document.getElementById('sidebar');
-      const overlay = document.getElementById('sidebar-overlay');
-      function closeS() { sidebar?.classList.add('-translate-x-full'); overlay?.classList.add('hidden'); }
-      function openS() { sidebar?.classList.remove('-translate-x-full'); overlay?.classList.remove('hidden'); }
-      menu?.addEventListener('click', () => sidebar?.classList.contains('-translate-x-full') ? openS() : closeS());
-      overlay?.addEventListener('click', closeS);
-    })();
-  </script>
+  <script src="./services/sidebar.js"></script>
 
   <!-- Seguridad: backend local JWT (sin Supabase) -->
   <script src="./services/config.js"></script>

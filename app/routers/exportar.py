@@ -34,6 +34,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from app.errors import detalle_error_interno
 from app.database import get_db
 from app.dependencies import UsuarioActual, requiere_rol
 from app.models import (
@@ -305,5 +306,5 @@ def exportar_todo(
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al exportar los datos: {str(exc)}",
+            detail=detalle_error_interno("Error al exportar los datos", exc),
         )

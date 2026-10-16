@@ -109,47 +109,27 @@
     }
   }
 
-  /**
-   * Registro de un usuario nuevo en SQLite local.
-   * POST /auth/register: recibe { nombre, email, password }, crea el usuario
-   * (rol por defecto 'cajero', activo) y devuelve un access_token para iniciar
-   * sesión automáticamente. Reutiliza el mismo almacenamiento que el login.
-   * @param {string} nombre
-   * @param {string} email
-   * @param {string} password
-   * @returns {Promise<object|null>} perfil del usuario recién creado
-   */
-  async function registrar(nombre, email, password) {
-    var res = await fetch(apiBase() + '/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre: nombre, email: email, password: password }),
-    });
-
-    if (!res.ok) {
-      var detail = 'No se pudo completar el registro';
-      try { var b = await res.json(); if (b && b.detail) detail = b.detail; } catch (_) {}
-      var err = new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
-      err.status = res.status;
-      throw err;
-    }
-
-    var data = await res.json();
-    if (!data || !data.access_token) {
-      throw new Error('El servidor no devolvió un token de acceso');
-    }
-    setToken(data.access_token);
-    return await fetchProfile();
-  }
-
-  // Compatibilidad con `loginEmail` (login.html/register.html)
+  // Compatibilidad con `loginEmail` (login.html)
   async function loginEmail(email, password) {
     return await login(email, password);
   }
 
+  /**
+   * Si la instalación está vacía (sin usuarios), el login no sirve: se lleva al
+   * asistente de primer arranque. Un fallo de red se ignora (queda el login).
+   */
+  async function irAlAsistenteSiHaceFalta() {
+    try {
+      var res = await fetch(apiBase() + '/setup/estado');
+      if (!res.ok) return;
+      var estado = await res.json();
+      if (estado && estado.necesita_setup) window.location.replace('setup.html');
+    } catch (_) { /* sin backend: se queda en el login */ }
+  }
+
   // ---------------- Enlazar formularios ----------------
   function showError(msg) {
-    var el = document.getElementById('login-error') || document.getElementById('register-error');
+    var el = document.getElementById('login-error') || document.getElementById('setup-error');
     if (el) { el.textContent = msg; el.classList.remove('hidden'); }
     // Fallback defensivo: este archivo es un script GLOBAL (no módulo) y NO puede
     // importar ui.js. Si alguna vista cargó el sistema de alertas en window, se
@@ -195,44 +175,11 @@
     });
   }
 
-  function enlazarRegistro() {
-    var form = document.getElementById('register-form');
-    if (!form) return;
-    form.addEventListener('submit', async function (e) {
-      e.preventDefault();
-      var btn = form.querySelector('button[type="submit"]');
-      var nombreEl = document.getElementById('register-nombre');
-      var emailEl = document.getElementById('register-email');
-      var passEl = document.getElementById('register-password');
-      var nombre = (nombreEl && nombreEl.value || '').trim();
-      var email = (emailEl && emailEl.value || '').trim();
-      var password = (passEl && passEl.value || '');
-
-      var errEl = document.getElementById('register-error');
-      if (errEl) errEl.classList.add('hidden');
-
-      if (!nombre) return showError('Ingresa tu nombre');
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-        return showError('Ingresa un correo electrónico válido');
-      }
-      if (password.length < 6) {
-        return showError('La contraseña debe tener al menos 6 caracteres');
-      }
-
-      setBusy(btn, true, 'Creando cuenta...');
-      try {
-        var perfil = await registrar(nombre, email, password);
-        // Inicio según rol: admin → Reportes; cajero → Punto de Venta.
-        window.location.href = pantallaInicio(perfil && perfil.rol);
-      } catch (err) {
-        showError(err.message || 'No se pudo crear la cuenta');
-        setBusy(btn, false, 'Crear Cuenta');
-      }
-    });
-  }
-
   // Scripts al final de <body>: DOM listo; enlazar ya (idempotente por elemento).
-  function enlazar() { enlazarLogin(); enlazarRegistro(); }
+  function enlazar() {
+    enlazarLogin();
+    if (document.getElementById('login-form')) irAlAsistenteSiHaceFalta();
+  }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', enlazar);
   else enlazar();
 
@@ -243,10 +190,8 @@
     clearSession: clearSession,
     fetchProfile: fetchProfile,
     login: login,
-    registrar: registrar,
     logout: logout,
   };
   window.loginEmail = loginEmail;
-  window.registrar = registrar;
   window.logout = logout;
 })();

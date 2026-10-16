@@ -20,6 +20,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Column,
     DateTime,
@@ -139,6 +140,12 @@ class Venta(Base):
     anulada_por = Column(String(255), nullable=True)
     motivo_anulacion = Column(String(255), nullable=True)
 
+    # Quién cobró la venta. NULL en ventas anteriores a esta versión. Define de
+    # qué caja forma parte y qué cajero puede verla.
+    usuario_id = Column(
+        Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+
     # Vuelto en efectivo
     paga_con = Column(Numeric(12, 2), nullable=True)
     vuelto = Column(Numeric(12, 2), nullable=True)
@@ -195,6 +202,13 @@ class Arqueo(Base):
     observaciones_apertura = Column(Text, nullable=True)
     observaciones_cierre = Column(Text, nullable=True)
     creado_en = Column(DateTime, nullable=False, default=now_utc)
+
+    # Dueño de la caja (quien la abrió). Cada usuario tiene su propia caja y solo
+    # se le suman sus ventas. NULL = caja abierta antes de esta versión (se
+    # trata como compartida hasta que se cierre).
+    usuario_id = Column(
+        Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
 
     movimientos = relationship(
         "ArqueoMovimiento",
@@ -272,6 +286,14 @@ class Licencia(Base):
     ultimo_ping = Column(DateTime, nullable=True)
     estado = Column(String(20), nullable=False, default="activa")  # activa|suspendida
     actualizado_en = Column(DateTime, nullable=True)
+    # Código firmado con el que se activó (VX1/VX2). Si está, el vencimiento y la
+    # gracia se toman de LA FIRMA (se re-verifica), no de las columnas de arriba:
+    # editar la base ya no sirve para extender la licencia.
+    codigo_activacion = Column(Text, nullable=True)
+    # Última serie de licencia (VX2) y de recuperación (VXR) aplicadas: impiden
+    # repetir un código viejo.
+    ultimo_serial = Column(BigInteger, nullable=True)
+    ultimo_serial_rec = Column(BigInteger, nullable=True)
 
     def __repr__(self) -> str:
         return f"<Licencia {self.cliente_id} vence={self.fecha_vencimiento}>"

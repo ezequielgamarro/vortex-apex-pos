@@ -89,8 +89,7 @@
       var esAdmin = perfil.rol === 'admin';
       rolBadge.textContent = esAdmin ? 'Admin' : 'Cajero';
       rolBadge.className =
-        'ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ' +
-        (esAdmin ? 'bg-pos-primary text-pos-primary-text' : 'bg-pos-secondary text-pos-text-head');
+        'ml-1 badge ' + (esAdmin ? 'badge-primary' : 'badge-neutral');
     }
   }
 
@@ -110,18 +109,17 @@
     btn.setAttribute('aria-label', 'Cambiar tema claro/oscuro');
     btn.title = 'Cambiar tema';
     // El botón se coloca justo antes del primer elemento con .ml-auto (perfil).
-    btn.className =
-      'p-2 rounded-lg text-pos-text-body hover:bg-pos-secondary/40 transition-colors';
+    btn.className = 'icon-btn';
 
     // Dos iconos: luna (en claro -> ofrece oscuro) y sol (en oscuro -> ofrece claro).
     // Se alternan por CSS vía la clase `dark` en <html> (sin JS de re-render).
     btn.innerHTML =
       // Icono LUNA: visible en tema claro.
-      '<svg class="h-5 w-5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">' +
+      '<svg class="dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">' +
       '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" ' +
       'd="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>' +
       // Icono SOL: visible en tema oscuro.
-      '<svg class="h-5 w-5 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">' +
+      '<svg class="hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">' +
       '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" ' +
       'd="M12 3v2m0 14v2m9-9h-2M5 12H3m15.36 6.36l-1.42-1.42M7.05 7.05L5.64 5.64' +
       'm12.72 0l-1.41 1.41M7.05 16.95l-1.41 1.41M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>';
@@ -154,12 +152,11 @@
     a.dataset.configToggle = '1';
     a.setAttribute('aria-label', 'Configuración');
     a.title = 'Configuración';
-    a.className =
-      'p-2 rounded-lg text-pos-text-body hover:bg-pos-secondary/40 transition-colors';
+    a.className = 'icon-btn';
     // Icono de ENGRANAJE/TUERCA (heroicons "cog"): metáfora universal de ajustes.
     a.innerHTML =
-      '<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">' +
-      '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" ' +
+      '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor">' +
+      '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" ' +
       'd="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>';
 
     // Insertar antes del botón de perfil (primer hijo con .ml-auto) o al final.
@@ -196,14 +193,27 @@
   // propaga a TODAS las vistas por igual.
   // ==========================================================================
 
-  // Estilos del enlace de menú (fuente única para estado normal y activo).
-  var CLASE_ITEM =
-    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ' +
-    'text-pos-text-body hover:bg-pos-secondary/40 transition-colors';
-  // Estilos del ítem activo: fondo gris resaltado + texto resaltado.
-  var CLASE_ITEM_ACTIVO =
-    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ' +
-    'bg-pos-secondary/60 text-pos-text-head';
+  // Estilos del enlace de menú: viven en css/tailwind.css (.rail-link). El
+  // ítem activo se marca con aria-current="page" (accesible y estilizable).
+  var CLASE_ITEM = 'rail-link';
+
+  // Íconos del menú (trazo de 1.75, 24x24, un solo estilo para todos).
+  var ICONOS = {
+    'pos': '<circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/>',
+    'ventas': '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z"/><path d="M9 8h6M9 12h6"/>',
+    'inventario': '<path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
+    'caja': '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 10v.01M18 14v.01"/>',
+    'historial-cajas': '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5M12 8v4l3 2"/>',
+    'reportes': '<path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-9"/>',
+    'cuentas': '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
+    'usuarios': '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/>',
+    'salir': '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>'
+  };
+  // Los íconos son literales de este archivo (nunca datos del usuario).
+  function iconoSvg(id) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONOS[id] || '') + '</svg>';
+  }
 
   // Orden absoluto del menú. `soloAdmin: true` = filtrado RBAC declarativo.
   // `primero: true` = el ítem se antepone a los demás (tras el filtrado RBAC).
@@ -214,10 +224,10 @@
     { id: 'ventas',          href: 'ventas.html',          label: 'Ventas' },
     { id: 'inventario',      href: 'inventario.html',      label: 'Inventario' },
     { id: 'caja',            href: 'caja.html',            label: 'Control de Caja' },
-    { id: 'historial-cajas', href: 'historial-cajas.html', label: 'Historial de Cajas', badge: { texto: 'Cerradas', clase: 'badge badge-neutral' } },
+    { id: 'historial-cajas', href: 'historial-cajas.html', label: 'Historial de Cajas' },
     { id: 'reportes',        href: 'reportes.html',        label: 'Reportes', soloAdmin: true, primero: true },
     { id: 'cuentas',         href: 'cuentas.html',         label: 'Cuentas Corrientes' },
-    { id: 'usuarios',        href: 'usuarios.html',        label: 'Usuarios', soloAdmin: true, badge: { texto: 'Admin', clase: 'badge badge-primary' } },
+    { id: 'usuarios',        href: 'usuarios.html',        label: 'Usuarios', soloAdmin: true },
   ];
 
   // Basename de la ruta actual, robusto ante subcarpetas:
@@ -240,8 +250,7 @@
 
     // Sección "Principal".
     var tituloPrincipal = document.createElement('p');
-    tituloPrincipal.className =
-      'px-3 text-xs font-semibold text-pos-text-body/60 uppercase tracking-wider mb-2';
+    tituloPrincipal.className = 'rail-titulo';
     tituloPrincipal.textContent = 'Principal';
     nav.appendChild(tituloPrincipal);
 
@@ -260,7 +269,9 @@
       a.href = item.href;
       a.dataset.menu = item.id;
       // Ítem activo = comparación del href con la ruta actual (basename).
-      a.className = (item.href === actual) ? CLASE_ITEM_ACTIVO : CLASE_ITEM;
+      a.className = CLASE_ITEM;
+      if (item.href === actual) a.setAttribute('aria-current', 'page');
+      a.insertAdjacentHTML('beforeend', iconoSvg(item.id));
 
       var span = document.createElement('span');
       span.textContent = item.label;
@@ -277,24 +288,25 @@
     });
 
     // Sección "Sesión" (siempre al final, tras los ítems de navegación).
+    var bloqueSesion = document.createElement('div');
+    bloqueSesion.className = 'rail-sesion';
     var tituloSesion = document.createElement('p');
-    tituloSesion.className =
-      'px-3 text-xs font-semibold text-pos-text-body/60 uppercase tracking-wider mt-6 mb-2';
+    tituloSesion.className = 'rail-titulo';
     tituloSesion.textContent = 'Sesión';
-    nav.appendChild(tituloSesion);
+    bloqueSesion.appendChild(tituloSesion);
 
     // Botón de cierre de sesión: se recrea en cada render. Por eso el evento
     // DEBE rehacerse con bindLogout() justo después de llamar a renderSidebar().
     var logout = document.createElement('a');
     logout.href = 'login.html';
     logout.id = 'logout-btn';
-    logout.className =
-      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ' +
-      'text-pos-danger hover:bg-pos-danger/10 transition-colors';
+    logout.className = 'rail-link rail-salir';
+    logout.insertAdjacentHTML('beforeend', iconoSvg('salir'));
     var spanLogout = document.createElement('span');
     spanLogout.textContent = 'Cerrar sesión';
     logout.appendChild(spanLogout);
-    nav.appendChild(logout);
+    bloqueSesion.appendChild(logout);
+    nav.appendChild(bloqueSesion);
   }
 
   // ---------- Boot de la guardia ----------
@@ -440,10 +452,13 @@
                 <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                 <span>${msg}</span>
               </div>
-              <button class="shrink-0 p-1 opacity-70 hover:opacity-100" onclick="this.parentElement.remove()" aria-label="Cerrar">
+              <button class="shrink-0 p-1 opacity-70 hover:opacity-100" data-cerrar-aviso aria-label="Cerrar">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
               </button>
             `;
+            // Listener en vez de `onclick` inline: la CSP no permite handlers inline.
+            var cerrarAviso = banner.querySelector('[data-cerrar-aviso]');
+            if (cerrarAviso) cerrarAviso.addEventListener('click', function () { banner.remove(); });
             // Insert at the top of main
             mainEl.insertBefore(banner, mainEl.firstChild);
           }

@@ -24,7 +24,7 @@
  *   PATCH  /auth/usuarios/{id}/estado?activo=...
  */
 import { api } from './api.js';
-import { mostrarAlerta } from './ui.js';
+import { mostrarAlerta, esc } from './ui.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -49,7 +49,7 @@ function render() {
   const yo = perfilLocal();
 
   if (!usuarios.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-pos-text-body/60 py-8">Todavía no hay usuarios registrados.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-pos-text-body/70 py-8">Todavía no hay usuarios registrados.</td></tr>';
     return;
   }
 
@@ -68,9 +68,9 @@ function render() {
          </select>`;
 
     const accionesCell = esYo
-      ? '<span class="text-xs text-pos-text-body/60 font-medium inline-flex items-center">No podés cambiarte roles ni desactivarte</span>'
+      ? '<span class="text-xs text-pos-text-body/70 font-medium inline-flex items-center">No podés cambiarte roles ni desactivarte</span>'
       : bloquearAcciones
-        ? '<span class="text-xs text-pos-text-body/60 font-medium inline-flex items-center">Cuenta protegida</span>'
+        ? '<span class="text-xs text-pos-text-body/70 font-medium inline-flex items-center">Cuenta protegida</span>'
         : `<button data-toggle="${u.id}" data-activo="${u.activo ? 'true' : 'false'}" class="btn-secondary !px-3 !py-1.5 text-xs">
              ${u.activo ? 'Desactivar' : 'Activar'}
            </button>`;
@@ -78,9 +78,9 @@ function render() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>
-        <div class="font-medium ${esYo ? 'text-pos-primary' : ''}">${u.nombre_completo || u.nombre || '—'} ${esYo ? '<span class="badge badge-primary ml-1">vos</span>' : ''}</div>
+        <div class="font-medium ${esYo ? 'text-pos-primary' : ''}">${esc(u.nombre_completo || u.nombre || '—')} ${esYo ? '<span class="badge badge-primary ml-1">vos</span>' : ''}</div>
       </td>
-      <td class="text-sm">${u.email || '—'}</td>
+      <td class="text-sm">${esc(u.email || '—')}</td>
       <td>${rolCell}</td>
       <td>
         <span class="badge ${u.activo ? 'badge-primary' : 'badge-neutral'}">${u.activo ? 'Activo' : 'Inactivo'}</span>
@@ -132,7 +132,7 @@ async function cargar() {
     render();
   } catch (e) {
     $('tabla-usuarios').innerHTML =
-      `<tr><td colspan="5" class="text-center text-pos-danger py-8">No se pudieron cargar los usuarios: ${e.message}</td></tr>`;
+      `<tr><td colspan="5" class="text-center text-pos-danger py-8">No se pudieron cargar los usuarios: ${esc(e.message)}</td></tr>`;
   }
 }
 

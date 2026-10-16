@@ -3,7 +3,7 @@
 Seguridad 100% local para la aplicación de escritorio:
 - Hashing de contraseñas con bcrypt (librería oficial, sin passlib).
   (`passlib` está sin mantenimiento y es incompatible con bcrypt >= 4.1).
-- Emisión y verificación de JWT con python-jose (algorithm HS256).
+- Emisión y verificación de JWT con PyJWT (algorithm HS256).
 - Protege las rutas de la API mediante `OAuth2PasswordBearer`.
 
 No depende de ningún servicio externo (sin Supabase).
@@ -16,10 +16,11 @@ from typing import Callable, Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError
 from sqlalchemy.orm import Session
 
-from app.config import settings
+from app.config import obtener_secreto, settings
 from app.database import get_db
 from app.models import Usuario
 
@@ -147,7 +148,7 @@ def crear_token_acceso(
     }
     return jwt.encode(
         to_encode,
-        settings.SECRET_KEY,
+        obtener_secreto(),
         algorithm=settings.ALGORITHM,
     )
 
@@ -157,10 +158,10 @@ def _decode_token(token: str) -> dict:
     try:
         return jwt.decode(
             token,
-            settings.SECRET_KEY,
+            obtener_secreto(),
             algorithms=[settings.ALGORITHM],
         )
-    except JWTError as exc:
+    except PyJWTError as exc:
         raise AuthError(
             "No se pudo validar las credenciales",
             status.HTTP_401_UNAUTHORIZED,

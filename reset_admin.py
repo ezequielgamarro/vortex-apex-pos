@@ -1,11 +1,9 @@
 """Restablece el usuario administrador por defecto (herramienta de soporte).
 
-Útil cuando NO se conoce la contraseña del administrador —por ejemplo, si la
-aplicación se sembró con una contraseña aleatoria en un primer arranque— o
-cuando se quiere volver a las credenciales por defecto documentadas:
-
-    email       : admin@pos.local
-    contraseña  : admin123
+Útil cuando NO se conoce la contraseña del administrador. Requiere acceso al
+disco de la PC y NO tiene contraseña por defecto: hay que indicarla (argumento
+o variable ADMIN_PASSWORD). Para un cliente remoto, el camino previsto es un
+código de recuperación firmado (pendiente de implementar).
 
 Dónde vive la base:
   La aplicación decide la ubicación de `pos_local.db` con el mismo orden de
@@ -17,7 +15,7 @@ Dónde vive la base:
 Uso (desde la raíz del proyecto, con el venv activado):
     .\app\.venv\Scripts\python.exe reset_admin.py
     # personalizando credenciales:
-    $env:ADMIN_EMAIL="admin@pos.local"; $env:ADMIN_PASSWORD="admin123"; .\app\.venv\Scripts\python.exe reset_admin.py
+    $env:ADMIN_EMAIL="admin@pos.local"; $env:ADMIN_PASSWORD="<contraseña>"; .\app\.venv\Scripts\python.exe reset_admin.py
     .\app\.venv\Scripts\python.exe reset_admin.py "otro@correo.com" "passwordNueva"
 """
 import sys
@@ -38,7 +36,11 @@ from app.models import Usuario  # noqa: E402
 def main() -> int:
     # Valores pedidos o los de entorno/settings, con fallback documentado.
     email = (sys.argv[1] if len(sys.argv) > 1 else (settings.ADMIN_EMAIL or "admin@pos.local")).strip().lower()
-    password = sys.argv[2] if len(sys.argv) > 2 else (settings.ADMIN_PASSWORD or "admin123")
+    password = sys.argv[2] if len(sys.argv) > 2 else (settings.ADMIN_PASSWORD or "")
+    if len(password) < 8:
+        print("[reset_admin] Falta la contraseña (mínimo 8 caracteres).")
+        print("             Pasala como 2.º argumento o en la variable ADMIN_PASSWORD.")
+        return 1
 
     db = SessionLocal()
     try:

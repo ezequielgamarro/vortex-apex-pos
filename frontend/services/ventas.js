@@ -60,59 +60,87 @@ function esAdmin() {
 /** Guarda el ID de la venta que se está por anular (la acción pide confirmación). */
 let idAnular = null;
 
+/** Ventas cargadas, por id (el panel lateral lee de acá). */
+const ventasPorId = new Map();
+let ventaAbierta = null;
+
 /**
- * Construye el HTML de un solo ticket (desplegable anidado).
+ * Fila compacta de un ticket: al tocarla se abre el detalle en el panel lateral.
  */
 function ticketHTML(v) {
-  const items = v.items || [];
   const anulada = String(v.estado || '').toLowerCase() === 'anulada';
-  const filas = items.map((it) => `
-      <tr>
-        <td class="py-1.5 pr-3 text-pos-text-body">${esc(it.nombre_producto)}</td>
-        <td class="py-1.5 px-2 text-right whitespace-nowrap text-pos-text-body/80">${Number(it.cantidad || 0).toLocaleString('es-CL')}</td>
-        <td class="py-1.5 px-2 text-right whitespace-nowrap text-pos-text-body">${money(it.precio_unitario)}</td>
-        <td class="py-1.5 pl-2 text-right whitespace-nowrap font-medium text-pos-text-head">${money(it.subtotal)}</td>
-      </tr>`).join('');
-
-  // Botón de anular: SOLO admin y SOLO si la venta está activa.
-  const botonAnular = (esAdmin() && !anulada)
-    ? `<button type="button" data-anular="${v.id}" data-folio="${esc(v.folio)}" class="btn-danger !px-3 !py-1.5 text-xs">Anular</button>`
-    : '';
-
+  const n = (v.items || []).length;
   return `
-    <article class="pos-card p-4 ${anulada ? 'opacity-70' : ''}">
-      <!-- Cabecera del ticket -->
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
-        <span class="font-mono text-sm font-semibold text-pos-primary">${esc(v.folio)}</span>
-        <span class="text-sm text-pos-text-body/70">${horaLocal(v.fecha)} h</span>
-        <span class="badge badge-neutral">${metodoLabel(v.metodo_pago)}</span>
-        ${anulada ? '<span class="badge badge-danger">Anulada</span>' : ''}
-        <span class="text-sm text-pos-text-body/80 ml-auto">${esc(v.cliente || 'Mostrador')}</span>
-        <span class="text-base font-bold text-pos-text-head ${anulada ? 'line-through' : ''}">${money(v.total)}</span>
-        ${botonAnular}
+    <button type="button" data-ver="${esc(v.id)}" class="w-full text-left pos-card p-3 flex flex-wrap items-center gap-x-4 gap-y-1 hover:border-pos-brand/50 transition-colors ${anulada ? 'opacity-70' : ''}">
+      <span class="font-mono text-sm font-semibold text-pos-primary">${esc(v.folio)}</span>
+      <span class="text-sm text-pos-text-body/70">${horaLocal(v.fecha)}</span>
+      <span class="badge badge-neutral">${metodoLabel(v.metodo_pago)}</span>
+      ${anulada ? '<span class="badge badge-danger">Anulada</span>' : ''}
+      <span class="text-sm text-pos-text-body/80 ml-auto truncate max-w-[10rem]">${esc(v.cliente || 'Mostrador')}</span>
+      <span class="text-xs text-pos-text-body/70">${n} ${n === 1 ? 'ítem' : 'ítems'}</span>
+      <span class="text-base font-bold text-pos-text-head ${anulada ? 'line-through' : ''}">${money(v.total)}</span>
+    </button>`;
+}
+
+/** Abre el ticket completo en el panel lateral. */
+function abrirPanel(id) {
+  const v = ventasPorId.get(String(id));
+  if (!v) return;
+  ventaAbierta = v;
+  const anulada = String(v.estado || '').toLowerCase() === 'anulada';
+  const items = v.items || [];
+  const descuentos = items.reduce((s, it) => s + (Number(it.descuento) || 0), 0);
+
+  $('panel-folio').textContent = v.folio;
+  const filas = items.map((it) => `
+    <li class="py-2.5 flex items-start gap-3">
+      <div class="min-w-0 flex-1">
+        <p class="text-sm font-medium text-pos-text-head">${esc(it.nombre_producto)}</p>
+        <p class="text-xs text-pos-text-body/70">${Number(it.cantidad || 0).toLocaleString('es-CL')} × ${money(it.precio_unitario)}${Number(it.descuento) ? ` · desc. ${money(it.descuento)}` : ''}</p>
       </div>
+      <span class="text-sm font-semibold text-pos-text-head whitespace-nowrap">${money(it.subtotal)}</span>
+    </li>`).join('');
+  const dato = (etiqueta, valor) => `
+    <div class="flex items-center justify-between gap-3 text-sm">
+      <dt class="text-pos-text-body/70">${etiqueta}</dt><dd class="font-medium text-pos-text-head text-right">${valor}</dd>
+    </div>`;
 
-      ${anulada && v.anulada_por ? `<p class="text-xs text-pos-text-body/60 mt-1">Anulada por ${esc(v.anulada_por)}${v.anulada_en ? ` el ${fechaLocal(v.anulada_en)}` : ''}.</p>` : ''}
+  $('panel-cuerpo').innerHTML = `
+    ${anulada ? `<div class="rounded-xl bg-pos-danger/10 text-pos-danger px-3 py-2 text-sm">
+      <p class="font-semibold">Venta anulada</p>
+      <p class="text-xs mt-0.5">${v.anulada_por ? `Por ${esc(v.anulada_por)}` : ''}${v.anulada_en ? ` el ${fechaLocal(v.anulada_en)}` : ''}.${v.motivo_anulacion ? ` Motivo: ${esc(v.motivo_anulacion)}.` : ''}</p>
+    </div>` : ''}
+    <dl class="space-y-2">
+      ${dato('Fecha', `${fechaLocal(v.fecha)} · ${horaLocal(v.fecha)}`)}
+      ${dato('Cliente', esc(v.cliente || 'Mostrador'))}
+      ${dato('Método de pago', metodoLabel(v.metodo_pago))}
+    </dl>
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wider text-pos-text-body/70 mb-1">Productos</p>
+      <ul class="divide-y divide-pos-secondary/40 border-y border-pos-secondary/40">${filas || '<li class="py-3 text-sm text-pos-text-body/70">Sin ítems.</li>'}</ul>
+    </div>
+    <dl class="space-y-2">
+      ${descuentos ? dato('Descuentos', `-${money(descuentos)}`) : ''}
+      ${v.paga_con != null && Number(v.paga_con) > 0 ? dato('Pagó con', money(v.paga_con)) : ''}
+      ${v.vuelto != null && Number(v.vuelto) > 0 ? dato('Vuelto', money(v.vuelto)) : ''}
+      <div class="flex items-end justify-between pt-1">
+        <dt class="text-sm font-semibold text-pos-text-head">Total</dt>
+        <dd class="text-2xl font-bold text-pos-text-head ${anulada ? 'line-through' : ''}">${money(v.total)}</dd>
+      </div>
+    </dl>`;
 
-      <!-- Detalle de productos (colapsado por defecto) -->
-      ${items.length ? `
-        <details class="mt-3 border-t border-pos-secondary/30 pt-2">
-          <summary class="cursor-pointer text-sm text-pos-primary hover:underline select-none">Detalle de productos</summary>
-          <div class="mt-2 overflow-x-auto">
-            <table class="min-w-full text-sm">
-              <thead>
-                <tr class="text-xs text-pos-text-body/60 uppercase tracking-wide">
-                  <th class="text-left pb-1 font-semibold">Producto</th>
-                  <th class="text-right pb-1 font-semibold">Cant.</th>
-                  <th class="text-right pb-1 font-semibold">P. unit.</th>
-                  <th class="text-right pb-1 font-semibold">Subtotal</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-pos-secondary/20">${filas}</tbody>
-            </table>
-          </div>
-        </details>` : ''}
-    </article>`;
+  $('panel-acciones').classList.toggle('hidden', !(esAdmin() && !anulada));
+  $('panel-venta').classList.remove('translate-x-full');
+  $('panel-venta').setAttribute('aria-hidden', 'false');
+  $('panel-venta-overlay').classList.remove('hidden');
+  $('panel-cerrar').focus();
+}
+
+function cerrarPanel() {
+  ventaAbierta = null;
+  $('panel-venta').classList.add('translate-x-full');
+  $('panel-venta').setAttribute('aria-hidden', 'true');
+  $('panel-venta-overlay').classList.add('hidden');
 }
 
 /**
@@ -122,6 +150,8 @@ function ticketHTML(v) {
 function renderPorFecha(ventas) {
   const cont = $('historial-por-fecha');
   cont.innerHTML = '';
+  ventasPorId.clear();
+  ventas.forEach((v) => ventasPorId.set(String(v.id), v));
 
   // Agrupar por clave de fecha local (YYYYMMDD) manteniéndolas en orden de aparición.
   const grupos = new Map();
@@ -165,12 +195,12 @@ function renderPorFecha(ventas) {
           <svg class="h-5 w-5 text-pos-primary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
           <div>
             <p class="font-semibold text-pos-text-head text-sm sm:text-base">Fecha: ${etiquetaFecha}</p>
-            <p class="text-xs text-pos-text-body/60">${tasa}</p>
+            <p class="text-xs text-pos-text-body/70">${tasa}</p>
           </div>
         </div>
         <div class="flex items-center gap-2 text-right">
           <span class="text-base font-bold text-pos-primary">${money(totalDia)}</span>
-          <svg class="h-5 w-5 text-pos-text-body/40 flex-shrink-0 chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          <svg class="h-5 w-5 text-pos-text-body/70 flex-shrink-0 chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
         </div>
       </summary>
       <div class="px-4 pb-4 space-y-3 border-t border-pos-secondary/30 pt-3">
@@ -180,9 +210,9 @@ function renderPorFecha(ventas) {
     cont.appendChild(detalle);
   }
 
-  // Enlazar botones de anular (delegación tras render).
-  cont.querySelectorAll('[data-anular]').forEach((b) => {
-    b.addEventListener('click', () => abrirModalAnular(b.dataset.anular, b.dataset.folio));
+  // Abrir el ticket en el panel lateral.
+  cont.querySelectorAll('[data-ver]').forEach((b) => {
+    b.addEventListener('click', () => abrirPanel(b.dataset.ver));
   });
 
   $('resumen-total').classList.remove('hidden');
@@ -226,6 +256,7 @@ async function confirmarAnular() {
     await api.voidSale(idAnular, { motivo, password });
     cerrarModalAnular();
     mostrarAlerta('Venta anulada. El stock fue repuesto.', 'ok');
+    cerrarPanel();
     await cargar();
   } catch (err) {
     mostrarAlerta(`No se pudo anular: ${err.message}`, 'error');
@@ -263,6 +294,14 @@ async function init() {
   $('btn-refrescar').addEventListener('click', cargar);
   $('btn-confirmar-anular')?.addEventListener('click', confirmarAnular);
   $('btn-cancelar-anular')?.addEventListener('click', cerrarModalAnular);
+  $('panel-cerrar')?.addEventListener('click', cerrarPanel);
+  $('panel-venta-overlay')?.addEventListener('click', cerrarPanel);
+  $('panel-anular')?.addEventListener('click', () => {
+    if (ventaAbierta) abrirModalAnular(ventaAbierta.id, ventaAbierta.folio);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && ventaAbierta && !document.querySelector('[id^="modal-"].flex')) cerrarPanel();
+  });
   await cargar();
 }
 

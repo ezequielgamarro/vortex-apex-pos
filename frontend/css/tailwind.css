@@ -3,213 +3,386 @@
 @tailwind utilities;
 
 /* ============================================================
-   TOKENS DE TEMA (light / dark) — Design System del POS
+   FUENTES LOCALES (el programa funciona sin internet)
    ------------------------------------------------------------
-   Valores como canales RGB ("R G B") para que Tailwind aplique
-   la opacidad con rgb(var(--x) / <alpha-value>) (ver tailwind.config.js).
-   - :root  = tema CLARO  (valores originales del proyecto).
-   - .dark  = tema OSCURO (sobre-escritura coherente).
-   La clase `.dark` la inyecta theme.js en <html> según la preferencia
-   del usuario (localStorage) o el sistema (prefers-color-scheme).
+   Onest  = lectura y datos (cifras tabulares para precios y tablas).
+   Unbounded = voz de marca: títulos de pantalla; hace eco del wordmark
+   extendido de Vortex Apex. Licencias OFL en assets/fonts/.
+   Rutas relativas a dist/css/app.css  ->  /assets/fonts/
+   ============================================================ */
+@font-face {
+  font-family: 'Onest';
+  src: url('../../assets/fonts/onest-latin-wght-normal.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Unbounded';
+  src: url('../../assets/fonts/unbounded-latin-wght-normal.woff2') format('woff2');
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ============================================================
+   TOKENS DE TEMA (light / dark) — Design System "Apex"
+   ------------------------------------------------------------
+   Valores como canales RGB ("R G B") para que Tailwind aplique la
+   opacidad con rgb(var(--x) / <alpha-value>) (ver tailwind.config.js).
+   Paleta nacida del logo: violeta #6246ea, carbón #2b2c34 y el punto
+   coral #e45858. Los neutros llevan un matiz violeta (no grises puros).
+   - :root = tema CLARO. - .dark = tema OSCURO (clase puesta por theme.js).
+   Jerarquía de superficies: rail (navegación: blanco en claro, carbón en oscuro) <
+   fondo de pantalla < tarjeta < campo de formulario.
    ============================================================ */
 :root {
-  --pos-bg: 255 255 254;          /* #fffffe */
-  --pos-text-head: 43 44 52;      /* #2b2c34 */
-  --pos-text-body: 43 44 52;      /* #2b2c34 */
-  --pos-primary: 98 70 234;       /* #6246ea */
-  --pos-primary-text: 255 255 254;/* #fffffe */
-  --pos-secondary: 209 209 233;   /* #d1d1e9 */
-  --pos-stroke: 43 44 52;         /* #2b2c34 */
-  --pos-danger: 228 88 88;        /* #e45858 */
+  color-scheme: light;
 
-  /* Éxito (verde): confirmaciones de cobro y toasts OK. Mismo patrón RGB
-     que el resto de tokens para habilitar la opacidad (bg-pos-success/15)
-     y el cambio de tema claro/oscuro. */
-  --pos-success: 22 163 74;       /* green-600: contraste AA sobre blanco */
+  --pos-bg: 243 243 249;           /* fondo de pantalla */
+  --pos-card: 255 255 255;         /* tarjetas y encabezado */
+  --pos-input: 255 255 255;        /* campos de formulario */
+  --pos-text-head: 22 22 34;       /* títulos */
+  --pos-text-body: 52 53 72;       /* texto (con /70 sigue en AA) */
 
-  /* Overlay de modales/sidebar: oscuro en ambos temas (difumina el fondo). */
-  --pos-overlay: 43 44 52;        /* #2b2c34 */
+  --pos-primary: 98 70 234;        /* #6246ea: acento y texto de marca */
+  --pos-primary-text: 255 255 255; /* texto sobre fondo primary */
+  --pos-brand: 98 70 234;          /* relleno sólido de botones */
+  --pos-on-brand: 255 255 255;
 
-  /* Superficie de "tarjeta": separada del fondo para dar profundidad en dark.
-     En claro es idéntica al fondo (efecto original) para no alterar el look. */
-  --pos-card: 255 255 254;
+  --pos-secondary: 224 224 238;    /* bordes y rellenos neutros */
+  --pos-stroke: 43 44 52;
+
+  --pos-danger: 205 52 60;         /* coral del logo, oscurecido para AA */
+  --pos-success: 21 128 61;
+  --pos-warning: 180 83 9;
+
+  /* Rail de navegación: blanco en claro, carbón en oscuro. */
+  --pos-rail: 255 255 255;
+  --pos-rail-text: 74 75 98;
+
+  --pos-overlay: 21 21 31;
+  --pos-shadow: 24 24 60;          /* color base de las sombras */
+  --pos-shadow-a: 0.08;
 }
 
 .dark {
-  /* Fondo oscuro tipo slate-900 y superficies slate-800 (coherentes). */
-  --pos-bg: 15 23 42;             /* #0f172a */
-  --pos-text-head: 248 250 252;   /* #f8fafc */
-  --pos-text-body: 203 213 225;   /* #cbd5e1 */
-  --pos-primary: 129 140 248;     /* indigo-400: sube luminosidad para contraste */
-  --pos-primary-text: 15 23 42;   /* texto oscuro sobre el primario claro */
-  --pos-secondary: 51 65 85;      /* slate-700 */
-  --pos-stroke: 148 163 184;      /* slate-400 */
-  --pos-danger: 248 113 113;      /* red-400 */
-  --pos-success: 74 222 128;      /* green-400: sube luminosidad p/ contraste */
+  color-scheme: dark;
 
-  /* Overlay sigue oscuro en dark (aunque el fondo ya es oscuro, mantiene el
-     efecto de difuminado/atenuación del modal). */
-  --pos-overlay: 0 0 0;           /* negro puro */
+  --pos-bg: 15 16 23;
+  --pos-card: 25 26 37;
+  --pos-input: 19 20 29;
+  --pos-text-head: 244 244 250;
+  --pos-text-body: 192 193 210;
 
-  /* Tarjetas un punto más claras que el fondo -> jerarquía visual. */
-  --pos-card: 30 41 59;           /* slate-800 */
+  --pos-primary: 168 152 255;      /* violeta claro: legible sobre oscuro */
+  --pos-primary-text: 20 16 44;
+  --pos-brand: 112 89 240;
+  --pos-on-brand: 255 255 255;
+
+  --pos-secondary: 48 49 68;
+  --pos-stroke: 148 163 184;
+
+  --pos-danger: 248 113 113;
+  --pos-success: 74 222 128;
+  --pos-warning: 251 191 36;
+
+  --pos-rail: 30 31 43;
+  --pos-rail-text: 176 177 198;
+
+  --pos-overlay: 0 0 0;
+  --pos-shadow: 0 0 0;
+  --pos-shadow-a: 0.45;
 }
 
 @layer base {
-  /* ============================================================
-     ESCALA GLOBAL DE LA INTERFAZ (density)
-     ------------------------------------------------------------
-     Toda la UI del POS usa unidades `rem` de Tailwind (texto, paddings,
-     alturas, gaps). Estas son RELATIVAS a este `font-size` de la raíz.
-     Por lo tanto, cambiar SOLO este valor escala la app completa de forma
-     proporcional y consistente (patrón estándar de Tailwind/CSS).
-              100%    = 16px (escala original)
-       93.75%  = 15px (interfaz ~6% más compacta)
-       87.5%   = 14px (interfaz ~12% más compacta)  <-- valor actual
-     Para agrandar: >100% (p. ej. 106.25% = 17px).
-     ============================================================ */
-    html {
+  /* Escala global de la interfaz: todo está en rem, cambiar este valor
+     escala la app completa (87.5% = 14 px). */
+  html {
     font-size: 87.5%;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
     @apply bg-pos-bg text-pos-text-body font-base antialiased;
+    /* Cifras de ancho fijo: precios, totales y tablas se alinean. */
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+    text-rendering: optimizeLegibility;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply text-pos-text-head font-semibold;
+    text-wrap: balance;
   }
+
+  /* Foco visible y coherente en toda la app (teclado y lector). */
+  :focus-visible {
+    outline: 2px solid rgb(var(--pos-primary));
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: none; /* los campos muestran su propio anillo (.form-input-pos) */
+  }
+
+  ::selection {
+    background: rgb(var(--pos-brand) / 0.28);
+    color: inherit;
+  }
+  input, textarea { caret-color: rgb(var(--pos-primary)); }
+  ::placeholder { color: rgb(var(--pos-text-body) / 0.72); opacity: 1; }
 }
 
 @layer components {
-  /* Tarjeta base reutilizable.
-     Superficie = token --pos-card (por defecto = fondo en claro; más claro
-     que el fondo en dark, dando jerarquía sin tocar el HTML). */
+  /* Voz de marca: títulos de pantalla con la tipografía extendida. */
+  .font-marca {
+    font-family: 'Unbounded', 'Onest', ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  /* Tarjeta base: superficie propia, borde fino y sombra en dos capas. */
   .pos-card {
-    @apply border border-pos-secondary/60 rounded-xl shadow-pos-card;
+    @apply rounded-2xl;
     background-color: rgb(var(--pos-card));
+    border: 1px solid rgb(var(--pos-secondary) / 0.7);
+    box-shadow:
+      0 1px 2px rgb(var(--pos-shadow) / calc(var(--pos-shadow-a) * 0.6)),
+      0 8px 24px -12px rgb(var(--pos-shadow) / var(--pos-shadow-a));
   }
 
-  /* Botón primario */
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
-           bg-pos-primary text-pos-primary-text text-sm font-semibold
-           hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-pos-primary/50
-           transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-
-  /* Botón secundario */
-  .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
-           bg-pos-secondary text-pos-text-head text-sm font-semibold
-           hover:opacity-90 focus:outline-none transition-colors duration-200
-           disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-
-  /* Botón peligro */
+  /* Botones. Relleno sólido de marca con luz superior; el hover sube el
+     brillo (no la opacidad) y el click se hunde un píxel. */
+  .btn-primary,
+  .btn-secondary,
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
-           bg-pos-danger text-pos-primary-text text-sm font-semibold
-           hover:opacity-90 focus:outline-none transition-colors duration-200
-           disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold
+           select-none disabled:opacity-50 disabled:cursor-not-allowed;
+    transition: filter 0.15s ease, transform 0.08s ease, background-color 0.15s ease, box-shadow 0.15s ease;
   }
+  .btn-primary:active:not(:disabled),
+  .btn-secondary:active:not(:disabled),
+  .btn-danger:active:not(:disabled) { transform: translateY(1px); }
 
-  /* Input base */
+  .btn-primary {
+    color: rgb(var(--pos-on-brand));
+    background-color: rgb(var(--pos-brand));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      0 6px 14px -8px rgb(0 0 0 / 0.5);
+  }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.1); }
+
+  .btn-secondary {
+    @apply text-pos-text-head;
+    background-color: rgb(var(--pos-card));
+    border: 1px solid rgb(var(--pos-secondary));
+    box-shadow: 0 1px 2px rgb(var(--pos-shadow) / calc(var(--pos-shadow-a) * 0.6));
+  }
+  .btn-secondary:hover:not(:disabled) { background-color: rgb(var(--pos-secondary) / 0.45); }
+
+  .btn-danger {
+    @apply bg-pos-danger text-pos-primary-text;
+    color: rgb(255 255 255);
+  }
+  .dark .btn-danger { color: rgb(40 10 12); }
+  .btn-danger:hover:not(:disabled) { filter: brightness(1.08); }
+
+  /* Campos de formulario */
   .form-input-pos {
-    @apply w-full px-3 py-2.5 rounded-lg border border-pos-secondary/70
-           bg-pos-bg text-pos-text-body text-sm
-           focus:outline-none focus:ring-2 focus:ring-pos-primary/40 focus:border-pos-primary
-           transition-colors duration-200;
+    @apply w-full px-3 py-2.5 rounded-xl text-sm text-pos-text-head;
+    background-color: rgb(var(--pos-input));
+    border: 1px solid rgb(var(--pos-secondary));
+    box-shadow: inset 0 1px 2px rgb(var(--pos-shadow) / calc(var(--pos-shadow-a) * 0.35));
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
+  .form-input-pos:hover { border-color: rgb(var(--pos-text-body) / 0.35); }
+  .form-input-pos:focus {
+    outline: none;
+    border-color: rgb(var(--pos-primary));
+    box-shadow: 0 0 0 3px rgb(var(--pos-brand) / 0.22);
+  }
+  .form-input-pos:disabled { opacity: 0.6; cursor: not-allowed; }
 
-  /* Etiqueta */
   .form-label {
     @apply block text-xs font-semibold text-pos-text-head mb-1.5;
   }
 
-  /* Contenedor de tabla */
-  .pos-table-wrap {
-    @apply overflow-x-auto;
-  }
-
-  .pos-table {
-    @apply min-w-full divide-y divide-pos-secondary/40;
-  }
-
-  .pos-table thead {
-    @apply bg-pos-secondary/40;
-  }
-
+  /* Tablas: encabezado tenue, filas compactas con hover. */
+  .pos-table-wrap { @apply overflow-x-auto; }
+  .pos-table { @apply min-w-full; border-collapse: separate; border-spacing: 0; }
+  .pos-table thead { background-color: rgb(var(--pos-secondary) / 0.3); }
   .pos-table th {
-    @apply px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-pos-text-head;
+    @apply px-4 py-3 text-left font-semibold uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    color: rgb(var(--pos-text-body) / 0.8);
+    border-bottom: 1px solid rgb(var(--pos-secondary) / 0.8);
   }
-
-  .pos-table tbody {
-    @apply divide-y divide-pos-secondary/30;
-  }
-
   .pos-table td {
-    @apply px-6 py-4 text-sm text-pos-text-body;
+    @apply px-4 py-3 text-sm text-pos-text-body;
+    border-bottom: 1px solid rgb(var(--pos-secondary) / 0.45);
+  }
+  .pos-table tbody tr { transition: background-color 0.12s ease; }
+  .pos-table tbody tr:hover { background-color: rgb(var(--pos-brand) / 0.05); }
+  .pos-table tbody tr:last-child td { border-bottom: 0; }
+  .pos-table-densa td { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+
+  /* Tarjetas de resumen que también actúan como filtro. */
+  .resumen-card { cursor: pointer; transition: border-color 0.12s ease, box-shadow 0.12s ease; }
+  .resumen-card:hover { border-color: rgb(var(--pos-brand) / 0.5); }
+  .resumen-card[aria-pressed='true'] { border-color: rgb(var(--pos-brand)); box-shadow: 0 0 0 1px rgb(var(--pos-brand)); }
+
+  /* Badges */
+  .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold; }
+  .badge-primary { background-color: rgb(var(--pos-brand) / 0.14); color: rgb(var(--pos-primary)); }
+  .badge-danger  { background-color: rgb(var(--pos-danger) / 0.14); color: rgb(var(--pos-danger)); }
+  .badge-success { background-color: rgb(var(--pos-success) / 0.14); color: rgb(var(--pos-success)); }
+  .badge-warning { background-color: rgb(var(--pos-warning) / 0.16); color: rgb(var(--pos-warning)); }
+  .badge-neutral { background-color: rgb(var(--pos-secondary) / 0.7); color: rgb(var(--pos-text-body)); }
+
+  /* ---------- Rail de navegación (blanco en claro, carbón en oscuro) ---------- */
+  .rail { background-color: rgb(var(--pos-rail)); color: rgb(var(--pos-rail-text)); border-right: 1px solid rgb(var(--pos-secondary)); }
+  .dark .rail { border-right-color: rgb(255 255 255 / 0.06); }
+  .rail-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium;
+    color: rgb(var(--pos-rail-text));
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .rail-link:hover { background-color: rgb(var(--pos-secondary) / 0.6); color: rgb(var(--pos-text-head)); }
+  .dark .rail-link:hover { background-color: rgb(255 255 255 / 0.06); color: #fff; }
+  .rail-link[aria-current='page'] {
+    background-color: rgb(var(--pos-brand) / 0.1);
+    color: rgb(var(--pos-primary));
+    box-shadow: inset 0 0 0 1px rgb(var(--pos-brand) / 0.22);
+  }
+  .dark .rail-link[aria-current='page'] {
+    background-color: rgb(var(--pos-brand) / 0.22);
+    color: #fff;
+    box-shadow: inset 0 0 0 1px rgb(var(--pos-brand) / 0.35);
+  }
+  .rail-link svg { @apply h-[1.15rem] w-[1.15rem] shrink-0; opacity: 0.85; }
+  .rail-link[aria-current='page'] svg { opacity: 1; color: rgb(var(--pos-primary)); }
+  .rail-titulo {
+    @apply px-3 mb-2 text-xs font-semibold uppercase;
+    letter-spacing: 0.08em;
+    color: rgb(var(--pos-rail-text) / 0.8);
+  }
+  .rail-link .badge-neutral { background-color: rgb(var(--pos-secondary) / 0.7); color: rgb(var(--pos-rail-text)); }
+  .rail-link .badge-primary { background-color: rgb(var(--pos-brand) / 0.14); color: rgb(var(--pos-primary)); }
+  .rail-salir { color: rgb(var(--pos-danger)); }
+  .rail-salir:hover { background-color: rgb(var(--pos-danger) / 0.1); color: rgb(var(--pos-danger)); }
+  .dark .rail-salir { color: rgb(255 140 140); }
+  .dark .rail-salir:hover { background-color: rgb(255 90 90 / 0.12); color: rgb(255 170 170); }
+  /* "Sesión" queda al fondo del rail, separada del resto del menú. */
+  #sidebar-menu { display: flex; flex-direction: column; }
+  #sidebar-menu > .rail-sesion { margin-top: auto; padding-top: 1.5rem; }
+
+  /* Botones de icono del encabezado */
+  .icon-btn {
+    @apply inline-flex items-center justify-center h-9 w-9 rounded-xl text-pos-text-body;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .icon-btn:hover { background-color: rgb(var(--pos-secondary) / 0.55); color: rgb(var(--pos-text-head)); }
+  .icon-btn svg { @apply h-5 w-5; }
+
+
+  /* Encabezado: el título empuja los controles hacia la derecha. */
+  header > h4, header > div:has(> h4) { margin-right: auto; }
+  header .ml-auto { margin-left: 0; }
+
+  /* Tarjeta de producto del POS: sube un punto al pasar y se enmarca en violeta. */
+  .producto-card { cursor: pointer; transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s ease, box-shadow 0.15s ease; }
+  .producto-card:hover:not(:disabled) {
+    transform: translateY(-2px);
+    border-color: rgb(var(--pos-brand) / 0.6);
+    box-shadow: 0 12px 28px -14px rgb(0 0 0 / 0.35);
+  }
+  .producto-card:active:not(:disabled) { transform: translateY(0); }
+
+
+  /* ---------- Pantallas sin sesión (login, alta, recuperación, bloqueo) ---------- */
+  .auth-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 1024px) { .auth-shell { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); } }
+  .auth-brand {
+    position: relative; overflow: hidden; flex-direction: column; justify-content: space-between;
+    padding: 3rem 3.5rem; min-height: 100vh;
+    background-color: rgb(33 34 46); color: rgb(190 191 210); border-right: 0;
+  }
+  .auth-deco {
+    position: absolute; right: -6rem; bottom: -5rem; width: 30rem; height: 30rem;
+    color: rgb(255 255 255 / 0.07); pointer-events: none;
+  }
+  .auth-punto { display: flex; align-items: center; gap: 0.75rem; color: rgb(190 191 210); }
+  .auth-punto svg { height: 1.1rem; width: 1.1rem; flex-shrink: 0; color: rgb(168 152 255); }
+  .auth-panel { display: flex; align-items: center; justify-content: center; padding: 2rem 1.25rem; }
+  .auth-card { width: 100%; max-width: 26rem; }
+  .auth-card form { display: grid; gap: 1rem; }
+
+
+  /* Modales: misma superficie que las tarjetas, con más elevación. */
+  .pos-modal {
+    @apply rounded-2xl;
+    background-color: rgb(var(--pos-card));
+    border: 1px solid rgb(var(--pos-secondary) / 0.8);
+    box-shadow: 0 24px 60px -20px rgb(0 0 0 / 0.45);
   }
 
-  /* Badge de rol */
-  .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  /* Acción destructiva dentro de filas: contorno discreto; el rojo sólido
+     queda para el botón de confirmación del modal. */
+  .btn-danger-quiet {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold;
+    color: rgb(var(--pos-danger));
+    background-color: transparent;
+    border: 1px solid rgb(var(--pos-danger) / 0.35);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+  }
+  .btn-danger-quiet:hover:not(:disabled) {
+    background-color: rgb(var(--pos-danger) / 0.1);
+    border-color: rgb(var(--pos-danger) / 0.6);
   }
 
-  .badge-primary { @apply bg-pos-primary/15 text-pos-primary; }
-  .badge-danger  { @apply bg-pos-danger/15 text-pos-danger; }
-  .badge-success { @apply bg-pos-success/15 text-pos-success; }
-  /* "Poco stock": ámbar legible en claro; en oscuro sube a un naranja brillante
-     con fondo translúcido para mantener contraste sobre superficies oscuras. */
-  .badge-warning { @apply bg-amber-400/25 text-amber-700 dark:bg-orange-900/50 dark:text-orange-400; }
-  .badge-neutral { @apply bg-pos-secondary/50 text-pos-text-head; }
+  /* Estado vacío */
+  .vacio {
+    @apply flex flex-col items-center justify-center text-center gap-2 py-10 text-sm;
+    color: rgb(var(--pos-text-body) / 0.75);
+  }
 }
 
-/* ============================================================
-   SCROLLBAR (Modo Oscuro)
-   ------------------------------------------------------------
-   La barra por defecto (blanca) rompe la inmersión del tema oscuro.
-   Sólo afectamos `.dark` para no alterar la apariencia en claro.
-   Usamos colores derivados de la paleta slate (coherentes con
-   --pos-bg / --pos-card). WebKit + fallback estándar (Firefox).
-   ============================================================ */
-.dark ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* Barra de desplazamiento temada (claro y oscuro). */
+* { scrollbar-width: thin; scrollbar-color: rgb(var(--pos-secondary)) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--pos-secondary));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
-.dark ::-webkit-scrollbar-track {
-  background: rgb(var(--pos-card));        /* slate-800 */
-}
-.dark ::-webkit-scrollbar-thumb {
-  background: #4b5563;                      /* gray-600: gris medio visible */
-  border-radius: 4px;
-}
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;                      /* gray-500 */
-}
-/* Fallback estándar (Firefox) */
-.dark {
-  scrollbar-color: #4b5563 rgb(var(--pos-card));
-  scrollbar-width: thin;
-}
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--pos-text-body) / 0.45); background-clip: content-box; }
+.dark .rail ::-webkit-scrollbar-thumb { background: rgb(255 255 255 / 0.16); background-clip: content-box; }
+
 @layer utilities {
+  /* Una sola entrada para modales y avisos: exponencial, corta, sin rebote. */
   @keyframes pos-toast-in {
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  .animate-toast-in {
-    animation: pos-toast-in 0.2s ease-out;
-  }
+  .animate-toast-in { animation: pos-toast-in 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
 
-  /* Entrada de modales/overlays (scale+fade). Reutilizable por el modal de
-     "Venta Completada" y por las alertas flotantes. */
   @keyframes pos-pop-in {
-    from { opacity: 0; transform: scale(0.95) translateY(4px); }
+    from { opacity: 0; transform: scale(0.96) translateY(6px); }
     to   { opacity: 1; transform: scale(1) translateY(0); }
   }
-  .animate-pop-in {
-    animation: pos-pop-in 0.18s ease-out;
+  .animate-pop-in { animation: pos-pop-in 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

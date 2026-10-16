@@ -1,25 +1,43 @@
 <!DOCTYPE html>
-<html lang="es" class="h-full">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Licencia Expirada | Punto de Venta</title>
+  <link rel="icon" type="image/png" href="./assets/favicon.png">
   <link href="./dist/css/app.css" rel="stylesheet" type="text/css">
   <script src="./services/theme.js"></script>
 </head>
-<body class="bg-pos-primary h-screen w-screen flex items-center justify-center p-4">
+<body class="bg-pos-bg">
+  <div class="auth-shell">
 
-  <div class="w-full max-w-md">
-    <div class="bg-pos-bg shadow-pos-card rounded-2xl border border-pos-secondary/40">
-      <div class="px-6 py-8">
+    <!-- Panel de marca (solo escritorio): carbón del logo, sin datos ni claims inventados. -->
+    <section class="auth-brand rail hidden lg:flex" aria-label="Vortex Apex">
+      <svg class="auth-deco" viewBox="0 0 400 400" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M200 20 360 290H40L200 20z"/><path d="M200 80 316 270H84L200 80z"/><path d="M200 140 272 250H128L200 140z"/></svg>
+      <img src="./assets/vx-wordmark-sobre-oscuro.webp" alt="VORTEX APEX" width="1000" height="82" class="relative block w-56 h-auto">
+      <div class="relative">
+        <img src="./assets/vx-marca-sobre-oscuro.webp" alt="" width="400" height="360" class="block h-24 w-auto mb-8">
+        <p class="font-marca text-3xl font-semibold leading-tight text-white max-w-[20ch]">Tu licencia necesita renovarse.</p>
+        <ul class="mt-8 space-y-3 text-sm">
+          <li class="auth-punto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Funciona sin conexión a internet</li>
+          <li class="auth-punto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Tus datos quedan en esta computadora</li>
+          <li class="auth-punto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Caja, stock y cuentas corrientes en un solo lugar</li>
+        </ul>
+      </div>
+      <span class="relative text-xs opacity-75">Punto de Venta</span>
+    </section>
 
-        <div class="flex flex-col items-center text-center mt-6 mb-6">
-          <svg class="h-16 w-16 text-pos-danger mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <h2 class="text-2xl font-bold text-pos-text-head text-center mb-1">Licencia Vencida</h2>
-          <p id="bloqueo-mensaje" class="text-center text-sm text-pos-text-body/70 mb-4">El acceso al sistema ha sido suspendido.</p>
-          <p id="bloqueo-contacto" class="text-center text-sm text-pos-text-body font-semibold mb-6"></p>
+    <main class="auth-panel">
+      <div class="auth-card">
+        <a href="login.html" aria-label="Vortex Apex, Punto de Venta" class="lg:hidden mb-8 block">
+          <img src="./assets/vx-wordmark-sobre-claro.webp" alt="VORTEX APEX" width="1000" height="78" class="h-6 w-auto block dark:hidden">
+          <img src="./assets/vx-wordmark-sobre-oscuro.webp" alt="VORTEX APEX" width="1000" height="82" class="h-6 w-auto hidden dark:block">
+        </a>
+        <div class="flex flex-col items-start text-left mb-6">
+          <span class="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-pos-danger/10 text-pos-danger"><svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+          <h1 class="font-marca text-2xl font-semibold text-pos-text-head mb-2">Licencia vencida</h1>
+          <p id="bloqueo-mensaje" class="text-sm text-pos-text-body/80 mb-4">El acceso al sistema ha sido suspendido.</p>
+          <p id="bloqueo-contacto" class="text-sm text-pos-text-head font-semibold mb-2"></p>
         </div>
 
                 <!-- Panel de activación por CÓDIGO FIRMADO, visible solo para ADMIN.
@@ -28,8 +46,8 @@
              firmado que se pega aquí. El backend lo verifica con la llave
              pública Ed25519 (el usuario no elige fechas). -->
         <div id="activacion-panel" class="hidden">
-          <div class="border-t border-pos-secondary/40 pt-4">
-            <h3 class="text-sm font-semibold text-pos-text-head mb-3 text-center">Activación de Licencia (Admin)</h3>
+          <div class="border-t border-pos-secondary/70 pt-4">
+            <h2 class="text-sm font-semibold text-pos-text-head mb-3">Activación de Licencia (Admin)</h2>
 
             <!-- Paso 1: huella de la máquina -->
             <label class="form-label">Paso 1 — Enviá este código a tu proveedor</label>
@@ -44,8 +62,8 @@
               <textarea id="licencia-codigo" class="form-input-pos font-mono text-xs" rows="3"
                         placeholder="VX1...." required></textarea>
 
-              <p id="activacion-error" class="hidden text-sm text-pos-danger font-medium text-center"></p>
-              <p id="activacion-success" class="hidden text-sm text-green-600 font-medium text-center"></p>
+              <p id="activacion-error" class="hidden text-sm text-pos-danger font-medium"></p>
+              <p id="activacion-success" class="hidden text-sm text-pos-success font-medium"></p>
 
               <button type="submit" id="btn-activar" class="btn-primary w-full !py-3 mt-2">Activar Licencia</button>
             </form>
@@ -65,7 +83,7 @@
         <!-- Descarga de respaldo completo: sección independiente del panel admin
              porque es un DERECHO del comercio (sus datos), no una acción de
              activación. El backend solo la autoriza para rol admin. -->
-        <div class="mt-4 pt-4 border-t border-pos-secondary/40">
+        <div class="mt-4 pt-4 border-t border-pos-secondary/70">
             <button type="button" id="btn-descargar-datos"
                     class="btn-secondary w-full !py-2.5">
               Descargar todos mis datos (Excel)
@@ -74,7 +92,7 @@
         </div>
 
       </div>
-    </div>
+    </main>
   </div>
 
   <script src="./services/config.js"></script>

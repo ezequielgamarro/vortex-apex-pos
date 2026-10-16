@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Usuarios | Punto de Venta</title>
+  <link rel="icon" type="image/png" href="./assets/favicon.png">
   <link href="./dist/css/app.css" rel="stylesheet" type="text/css">
   <!-- Anti-FOUC: aplica el tema ANTES del render (evita el flash blanco). -->
   <script src="./services/theme.js"></script>
@@ -11,13 +12,15 @@
 <body class="flex">
 
   <!-- ============================ SIDEBAR ============================ -->
-  <aside id="sidebar" class="fixed z-40 inset-y-0 left-0 w-64 bg-pos-bg border-r border-pos-secondary/60 transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:static" aria-label="Navegación principal">
+  <aside id="sidebar" class="rail fixed z-40 inset-y-0 left-0 w-64 transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:self-start shrink-0" aria-label="Navegación principal">
     <div class="flex flex-col h-full">
-      <a href="pos.html" class="flex items-center justify-center px-6 h-20 border-b border-pos-secondary/60">
-        <img src="./assets/vortex apex logo modo claro dentro del programa.webp" alt="VORTEX APEX" class="block w-full max-w-[14rem] h-auto dark:hidden">
-        <img src="./assets/vortex apex logo modo oscuro dentro del programa.webp" alt="VORTEX APEX" class="hidden w-full max-w-[14rem] h-auto dark:block">
+      <a href="pos.html" class="flex items-center px-6 h-16 shrink-0" aria-label="Vortex Apex, ir al inicio">
+        <img src="./assets/vx-wordmark-sobre-claro.webp" alt="VORTEX APEX" width="1000" height="78" class="block dark:hidden w-full max-w-[11.5rem] h-auto">
+        <img src="./assets/vx-wordmark-sobre-oscuro.webp" alt="VORTEX APEX" width="1000" height="82" class="hidden dark:block w-full max-w-[11.5rem] h-auto">
       </a>
-      <nav id="sidebar-menu" class="flex-1 overflow-y-auto p-4 space-y-1"></nav>
+      <!-- El menú lateral es renderizado dinámicamente por guard.js (renderSidebar).
+           Single Source of Truth: no incluir enlaces estáticos aquí. -->
+      <nav id="sidebar-menu" class="flex-1 overflow-y-auto px-3 pb-4 pt-3 space-y-1" aria-label="Secciones"></nav>
     </div>
   </aside>
   <div id="sidebar-overlay" class="fixed inset-0 z-30 bg-pos-overlay/50 backdrop-blur-sm lg:hidden hidden"></div>
@@ -26,12 +29,12 @@
   <div class="flex flex-col flex-1 min-w-0">
 
     <!-- Header -->
-    <header class="sticky top-0 z-20 flex items-center gap-4 px-4 sm:px-6 h-16 bg-pos-bg border-b border-pos-secondary/60">
-      <button id="menu-toggle" class="p-2 -ml-2 rounded-lg text-pos-text-head hover:bg-pos-secondary/40 lg:hidden" type="button" aria-label="Abrir menú">
+    <header class="sticky top-0 z-20 flex items-center gap-4 px-4 sm:px-6 h-16 bg-pos-card border-b border-pos-secondary/70">
+      <button id="menu-toggle" class="icon-btn -ml-2 lg:hidden" type="button" aria-label="Abrir menú">
         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
-      <h4 class="text-lg font-semibold text-pos-text-head">Usuarios</h4>
-      <button class="ml-auto flex items-center gap-2 p-1.5 rounded-lg hover:bg-pos-secondary/40" type="button">
+      <h4 class="font-marca text-base font-semibold text-pos-text-head">Usuarios</h4>
+      <button class="ml-auto flex items-center gap-2 p-1.5 rounded-xl hover:bg-pos-secondary/50 transition-colors" type="button">
         <span class="flex items-center justify-center h-8 w-8 rounded-full bg-pos-primary text-pos-primary-text text-sm font-semibold" id="profile-initial">U</span>
         <span class="hidden sm:block text-sm font-medium text-pos-text-body" id="profile-name">Usuario</span>
         <span id="profile-rol"></span>
@@ -67,7 +70,7 @@
               </tr>
             </thead>
             <tbody id="tabla-usuarios">
-              <tr><td colspan="5" class="text-center text-pos-text-body/60 py-8">Cargando usuarios...</td></tr>
+              <tr><td colspan="5" class="text-center text-pos-text-body/70 py-8">Cargando usuarios...</td></tr>
             </tbody>
           </table>
         </div>
@@ -79,10 +82,10 @@
   <!-- ===================== MODAL: NUEVO USUARIO ===================== -->
   <div id="modal-usuario" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
     <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
-    <div class="relative w-full max-w-md bg-pos-bg rounded-xl shadow-lg p-6 max-h-[90vh] overflow-y-auto">
+    <div class="relative w-full max-w-md pos-modal p-6 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-5">
         <h4 class="text-lg font-semibold text-pos-text-head">Nuevo usuario</h4>
-        <button type="button" class="text-pos-text-body/60 hover:text-pos-text-head" data-close>
+        <button type="button" class="text-pos-text-body/70 hover:text-pos-text-head" data-close>
           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
@@ -120,7 +123,7 @@
             <option value="ferreteria">Ferretería</option>
             <option value="libreria">Librería</option>
           </select>
-          <p class="text-xs text-pos-text-body/60 mt-1">
+          <p class="text-xs text-pos-text-body/70 mt-1">
             Define qué campos extra de inventario ven los usuarios (talle/color, vencimientos).
           </p>
         </div>
@@ -133,24 +136,8 @@
   </div>
 
   <!-- JS del layout (menú responsive + cierre de modales) -->
-  <script>
-    (function () {
-      const menu = document.getElementById('menu-toggle');
-      const sidebar = document.getElementById('sidebar');
-      const overlay = document.getElementById('sidebar-overlay');
-      function closeS() { sidebar?.classList.add('-translate-x-full'); overlay?.classList.add('hidden'); }
-      function openS() { sidebar?.classList.remove('-translate-x-full'); overlay?.classList.remove('hidden'); }
-      menu?.addEventListener('click', () => sidebar?.classList.contains('-translate-x-full') ? openS() : closeS());
-      overlay?.addEventListener('click', closeS);
-      // Cierre genérico de modales
-      document.addEventListener('click', (e) => {
-        if (e.target.closest('[data-close]')) {
-          const m = e.target.closest('[id^="modal"]');
-          if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
-        }
-      });
-    })();
-  </script>
+  <script src="./services/sidebar.js"></script>
+  <script src="./services/modal-close.js"></script>
 
   <!-- Seguridad: backend local JWT (sin Supabase) -->
   <script src="./services/config.js"></script>

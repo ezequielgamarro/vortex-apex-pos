@@ -36,15 +36,18 @@ import httpx
 logger = logging.getLogger("uvicorn.error")
 
 # Fuente primaria de hora (la indicada en el requerimiento).
-URL_HORA_PRIMARIA = "http://worldtimeapi.org/api/timezone/Etc/UTC"
+URL_HORA_PRIMARIA = "https://worldtimeapi.org/api/timezone/Etc/UTC"
 # Fuente de respaldo (API estable de Cloudflare, sin autenticación).
 URL_HORA_RESPALDO = "https://cloudflare.com/cdn-cgi/trace"
 
 _TIEMPO_MAX_CACHE = timedelta(minutes=30)
+# Tras un fallo de red no se reintenta hasta pasado este tiempo: un POS SIN
+# internet (el caso normal) no debe perder segundos de espera en cada consulta.
+_TIEMPO_REINTENTO_TRAS_FALLO = timedelta(minutes=30)
 _TIMEOUT_HTTP = 4.0
 
 # Caché en memoria del proceso (evita golpear la API en cada request).
-_cache: dict[str, object] = {"fecha": None, "obtenida_en": None}
+_cache: dict[str, object] = {"fecha": None, "obtenida_en": None, "fallo_en": None}
 
 
 @dataclass
@@ -112,12 +115,21 @@ def resolver_fecha_actual(ultimo_ping: datetime | None) -> FuenteHora:
             # Proyectar el paso del tiempo desde la caché (monotonía).
             return FuenteHora(cached + (ahora - obtenida), "cache")
 
-    # 2) Hora externa.
-    externa = _consultar_hora_externa()
+    # 2) Hora externa (salvo que haya fallado hace poco: sin internet no se
+    #    insiste en cada request).
+    fallo_en = _cache.get("fallo_en")
+    reciente_fallo = (
+        isinstance(fallo_en, datetime)
+        and ahora - fallo_en < _TIEMPO_REINTENTO_TRAS_FALLO
+    )
+    externa = None if reciente_fallo else _consultar_hora_externa()
     if externa is not None:
         _cache["fecha"] = externa
         _cache["obtenida_en"] = ahora
+        _cache["fallo_en"] = None
         return FuenteHora(externa, "externa")
+    if not reciente_fallo:
+        _cache["fallo_en"] = ahora
 
     # 3) Delta monótono respecto al último ping conocido.
     if ultimo_ping is not None:

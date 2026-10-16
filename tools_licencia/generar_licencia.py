@@ -19,6 +19,7 @@ SEGURIDAD:
 from __future__ import annotations
 
 import sys
+import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -92,18 +93,27 @@ def main() -> None:
     except ValueError:
         gracia = 7
 
-    # 4) Firmar.
+    # 4) Formato. VX2 lleva un número de serie (la hora de emisión): el POS
+    #    rechaza un código más viejo que el último aplicado, así un código
+    #    viejo no se puede volver a usar. VX1 es el formato original (sin
+    #    serie) y es el único que entienden las versiones del POS ANTERIORES
+    #    a esta actualización.
+    crudo_fmt = input("  Formato (2 = con serie, recomendado; 1 = original) [2]: ").strip()
+    serie = None if crudo_fmt == "1" else int(time.time())
+
+    # 5) Firmar.
     codigo = firmar_licencia(
         private_key=private_key,
         cliente_id=cliente_id,
         huella=huella.upper(),
         fecha_vencimiento=vence,
         dias_gracia=gracia,
+        serie=serie,
     )
 
-    # 5) Mostrar el resultado para copiar y enviar.
+    # 6) Mostrar el resultado para copiar y enviar.
     print("\n" + "=" * 64)
-    print("  ✅ LICENCIA GENERADA")
+    print("  LICENCIA GENERADA")
     print("=" * 64)
     print(f"  Cliente ID : {cliente_id}")
     print(f"  Huella     : {huella.upper()}")

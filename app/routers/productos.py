@@ -22,6 +22,7 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from app.errors import detalle_error_interno
 from app.database import get_db
 from app.dependencies import get_current_user, requiere_rol, UsuarioActual
 
@@ -29,6 +30,47 @@ from app.models import Producto, now_utc
 from app.schemas.producto import ProductoCreate, ProductoUpdate, ProductoOut
 
 router = APIRouter(prefix="/productos", tags=["Productos"])
+
+def _sin_costos(producto: Producto, usuario: UsuarioActual) -> ProductoOut:
+    """Producto listo para devolver: un cajero no recibe costo ni margen.
+
+    Se arma una copia del esquema de salida; el objeto ORM no se toca (mutarlo
+    podría guardarse sin querer en el próximo commit de la sesión).
+    """
+    salida = ProductoOut.model_validate(producto)
+    if usuario.rol != "admin":
+        salida = salida.model_copy(
+            update={"costo": None, "porcentaje_ganancia": None}
+        )
+    return salida
+
+
+# Límites de la importación desde Excel (evita agotar la memoria con un archivo
+# gigante o comprimido a propósito).
+_MAX_IMPORT_BYTES = 10 * 1024 * 1024
+_MAX_IMPORT_FILAS = 20000
+
+# Un texto que empieza con estos caracteres lo interpreta Excel como fórmula.
+_INICIOS_FORMULA = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _texto_seguro(valor):
+    """Neutraliza fórmulas al exportar: antepone ' a un texto que parezca una."""
+    if isinstance(valor, str) and valor.startswith(_INICIOS_FORMULA):
+        return "'" + valor
+    return valor
+
+
+def _quitar_guarda_formula(valor):
+    """Inversa de `_texto_seguro` al importar (el ' lo puso nuestra exportación)."""
+    if (
+        isinstance(valor, str)
+        and len(valor) > 1
+        and valor[0] == "'"
+        and valor[1:].startswith(_INICIOS_FORMULA)
+    ):
+        return valor[1:]
+    return valor
 
 # NOTA: SQLAlchemy devuelve las columnas Numeric como `Decimal` de forma nativa;
 # ya no hace falta normalizar manualmente como ocurría con Supabase.
@@ -83,11 +125,11 @@ def listar_productos(
             col_orden.desc() if (dir_ or "asc").lower() == "desc" else col_orden.asc()
         )
         query = query.order_by(col_orden, Producto.nombre.asc())
-        return query.all()
+        return [_sin_costos(p, usuario) for p in query.all()]
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al listar productos: {str(exc)}",
+            detail=detalle_error_interno("Error al listar productos", exc),
         )
 
 
@@ -102,15 +144,16 @@ def productos_bajo_stock(
 ):
     """Devuelve los productos cuyo stock actual es menor o igual al stock mínimo."""
     try:
-        return (
+        productos = (
             db.query(Producto)
             .filter(Producto.activo.is_(True), Producto.stock <= Producto.stock_minimo)
             .all()
         )
+        return [_sin_costos(p, usuario) for p in productos]
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al consultar bajo stock: {str(exc)}",
+            detail=detalle_error_interno("Error al consultar bajo stock", exc),
         )
 
 
@@ -142,13 +185,13 @@ def buscar_por_codigo(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Producto no encontrado para ese código de barras",
             )
-        return producto
+        return _sin_costos(producto, usuario)
     except HTTPException:
         raise
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al buscar por código de barras: {str(exc)}",
+            detail=detalle_error_interno("Error al buscar por código de barras", exc),
         )
 
 
@@ -159,7 +202,7 @@ def buscar_por_codigo(
 )
 def ajustar_stock(
     producto_id: UUID,
-    cantidad: Decimal,
+    cantidad: Decimal = Query(..., ge=-999_999_999, le=999_999_999),
     usuario: UsuarioActual = Depends(requiere_rol("admin")),
     db: Session = Depends(get_db),
 ):
@@ -196,7 +239,7 @@ def ajustar_stock(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al ajustar stock: {str(exc)}",
+            detail=detalle_error_interno("Error al ajustar stock", exc),
         )
 
 
@@ -227,7 +270,8 @@ COLUMNAS_XLSX = [
     summary="Exportar el catálogo de productos a Excel (.xlsx)",
 )
 def exportar_productos(
-    usuario: UsuarioActual = Depends(get_current_user),
+    # Solo admin: la planilla incluye costo y margen de cada producto.
+    usuario: UsuarioActual = Depends(requiere_rol("admin")),
     db: Session = Depends(get_db),
 ):
     """Genera y descarga un .xlsx con TODO el catálogo (activos e inactivos).
@@ -247,14 +291,14 @@ def exportar_productos(
         for p in productos:
             ws.append(
                 [
-                    p.nombre,
-                    p.codigo_barras or "",
-                    p.categoria or "",
-                    p.marca or "",
-                    p.talle or "",
-                    p.color or "",
-                    p.tipo_papel or "",
-                    p.color_bn or "",
+                    _texto_seguro(p.nombre),
+                    _texto_seguro(p.codigo_barras or ""),
+                    _texto_seguro(p.categoria or ""),
+                    _texto_seguro(p.marca or ""),
+                    _texto_seguro(p.talle or ""),
+                    _texto_seguro(p.color or ""),
+                    _texto_seguro(p.tipo_papel or ""),
+                    _texto_seguro(p.color_bn or ""),
                     p.tipo_unidad or "unidad",
                     float(p.precio or 0),
                     float(p.costo or 0),
@@ -292,7 +336,7 @@ def exportar_productos(
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al exportar productos: {str(exc)}",
+            detail=detalle_error_interno("Error al exportar productos", exc),
         )
 
 
@@ -349,11 +393,24 @@ async def importar_productos(
     try:
         from openpyxl import load_workbook
 
-        contenido = await archivo.read()
-        wb = load_workbook(io.BytesIO(contenido), data_only=True)
+        # Se lee 1 byte de más para detectar el exceso sin cargar todo el archivo.
+        contenido = await archivo.read(_MAX_IMPORT_BYTES + 1)
+        if len(contenido) > _MAX_IMPORT_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"El archivo supera el máximo de {_MAX_IMPORT_BYTES // (1024 * 1024)} MB.",
+            )
+        wb = load_workbook(io.BytesIO(contenido), data_only=True, read_only=True)
         ws = wb.active
 
-        filas = list(ws.iter_rows(values_only=True))
+        filas = []
+        for fila_xl in ws.iter_rows(values_only=True):
+            filas.append(fila_xl)
+            if len(filas) > _MAX_IMPORT_FILAS + 1:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"El archivo tiene más de {_MAX_IMPORT_FILAS} filas.",
+                )
         if not filas:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -368,7 +425,8 @@ async def importar_productos(
 
         def celda(fila, col):
             i = idx.get(col)
-            return fila[i] if (i is not None and i < len(fila)) else None
+            valor = fila[i] if (i is not None and i < len(fila)) else None
+            return _quitar_guarda_formula(valor)
 
         creados = 0
         actualizados = 0
@@ -458,7 +516,7 @@ async def importar_productos(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al importar productos: {str(exc)}",
+            detail=detalle_error_interno("Error al importar productos", exc),
         )
 
 
@@ -476,13 +534,13 @@ def obtener_producto(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Producto no encontrado",
             )
-        return producto
+        return _sin_costos(producto, usuario)
     except HTTPException:
         raise
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al obtener el producto: {str(exc)}",
+            detail=detalle_error_interno("Error al obtener el producto", exc),
         )
 
 
@@ -508,7 +566,7 @@ def crear_producto(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al crear el producto: {str(exc)} (posible duplicado de código de barras)",
+            detail=detalle_error_interno("Error al crear el producto (posible duplicado de código de barras)", exc),
         )
 
 
@@ -547,7 +605,7 @@ def editar_producto(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al editar el producto: {str(exc)}",
+            detail=detalle_error_interno("Error al editar el producto", exc),
         )
 
 
@@ -578,5 +636,5 @@ def eliminar_producto(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al eliminar el producto: {str(exc)}",
+            detail=detalle_error_interno("Error al eliminar el producto", exc),
         )

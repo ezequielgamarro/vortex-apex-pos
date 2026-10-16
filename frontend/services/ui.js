@@ -88,7 +88,7 @@ function contenedorRaiz() {
  */
 export function mostrarAlerta(mensaje, tipo = 'ok', opts = {}) {
   const t = TIPOS_VALIDOS.has(tipo) ? tipo : 'ok';
-  const { focoDestino = null, duracionMs = 4500 } = opts;
+  const { focoDestino = null, duracionMs = 4500, accion = null } = opts;
   const pal = PALETAS[t];
 
   // (1) Captura del foco de origen ANTES de crear el toast.
@@ -99,16 +99,26 @@ export function mostrarAlerta(mensaje, tipo = 'ok', opts = {}) {
 
   const box = document.createElement('div');
   box.className =
-    `pointer-events-auto w-full rounded-xl border shadow-lg p-4 flex items-start gap-3 bg-pos-bg dark:bg-gray-800 ${pal.borde} animate-toast-in`;
+    `pointer-events-auto w-full rounded-xl border shadow-lg p-4 flex items-start gap-3 bg-pos-card ${pal.borde} animate-toast-in`;
   box.setAttribute('role', 'alert');
   box.innerHTML = `
     <span class="shrink-0 flex items-center justify-center h-8 w-8 rounded-full ${pal.icono}">
       <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">${ICONOS[t]}</svg>
     </span>
-    <p class="flex-1 text-sm font-medium text-pos-text-head dark:text-white leading-snug pt-1">${mensaje}</p>
-    <button type="button" class="shrink-0 text-pos-text-body/50 hover:text-pos-text-head dark:hover:text-white" aria-label="Cerrar">
+    <p class="flex-1 text-sm font-medium text-pos-text-head dark:text-white leading-snug pt-1">${esc(mensaje)}</p>
+    <button type="button" class="shrink-0 text-pos-text-body/70 hover:text-pos-text-head dark:hover:text-white" aria-label="Cerrar">
       <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>`;
+
+  // Acción opcional (enlace) bajo el mensaje: { texto, href }.
+  if (accion && accion.href) {
+    const enlace = document.createElement('a');
+    enlace.href = accion.href;
+    enlace.textContent = accion.texto || 'Abrir';
+    enlace.className = 'mt-1 inline-block text-sm font-semibold text-pos-primary hover:underline';
+    box.querySelector('p').appendChild(document.createElement('br'));
+    box.querySelector('p').appendChild(enlace);
+  }
 
   // (3) Cierre idempotente: restituye el foco sin robar el del usuario.
   let cerrado = false;
@@ -133,4 +143,15 @@ export function mostrarAlerta(mensaje, tipo = 'ok', opts = {}) {
 export function exponerUIglobal() {
   window.mostrarAlerta = mostrarAlerta;
   window.restaurarFocoSiLibre = restaurarFocoSiLibre;
+}
+
+/**
+ * Escapa texto para insertarlo como HTML (innerHTML). Usalo con TODO dato que
+ * venga de la base o del usuario (nombres, teléfonos, conceptos, mensajes).
+ * También escapa comillas, así que sirve dentro de atributos (value="...").
+ */
+export function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
 }

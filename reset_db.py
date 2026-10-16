@@ -6,10 +6,13 @@ Borrando TODAS las tablas del esquema y volviéndolas a crear VACÍAS:
   - arqueo / movimientos -> 0 filas
   - usuarios           -> 0 filas
 
-EL ADMINISTRADOR SE SIEMBRA AUTOMÁTICAMENTE EN EL SIGUIENTE ARRANQUE del
-backend vía el `lifespan` de la app (app/main.py -> app.seed). Por eso este
-script NO deja el admin: lo crea el backend cuando detecte "base vacía", tal
-como se pide para PC nuevas.
+Es DESTRUCTIVO. Antes de borrar:
+  - pide confirmación (hay que escribir el nombre de la base), y
+  - guarda un respaldo en la carpeta `backups` junto a la base.
+
+La base queda sin usuarios: el siguiente arranque abre el asistente de
+configuración inicial (código de alta firmado) o, solo en desarrollo, siembra un
+admin si definís ADMIN_PASSWORD (ver app/seed.py).
 
 Uso (desde la raíz del proyecto):
     ./app/.venv/Scripts/python.exe reset_db.py
@@ -24,12 +27,32 @@ if str(ROOT) not in sys.path:
 
 # Importar modelos ANTES de drop/create para que queden registrados en metadata.
 import app.models  # noqa: F401,E402
-from app.config import settings  # noqa: E402
-from app.database import Base, SessionLocal, engine  # noqa: E402
+from app.database import _DB_PATH, Base, SessionLocal, engine  # noqa: E402
+from app.services.backup import respaldar_si_corresponde  # noqa: E402
+
+
+def _confirmar() -> bool:
+    """Pide escribir el nombre de la base. Falla cerrado si no hay consola."""
+    nombre = Path(_DB_PATH).name
+    print(f"[reset] Se BORRARÁN TODOS LOS DATOS de: {_DB_PATH}")
+    try:
+        escrito = input(f"[reset] Para continuar escribí exactamente «{nombre}»: ")
+    except EOFError:
+        return False
+    return escrito.strip() == nombre
 
 
 def reset_database() -> None:
     """Elimina y recrea todas las tablas. Devuelve la BD a cero datos."""
+    if not _confirmar():
+        print("[reset] Cancelado: no se tocó nada.")
+        return
+    copia = respaldar_si_corresponde(forzar=True)
+    if copia is None and Path(_DB_PATH).exists() and Path(_DB_PATH).stat().st_size:
+        print("[reset] No se pudo crear el respaldo previo. Cancelado: no se tocó nada.")
+        return
+    if copia is not None:
+        print(f"[reset] Respaldo previo guardado en: {copia}")
     # Lógica: drop_all + create_all es la forma más robusta y limpia de "vaciar":
     db = SessionLocal()
     try:
@@ -48,9 +71,8 @@ def reset_database() -> None:
                 (total,) = conn.execute(text(f'SELECT COUNT(*) FROM "{tabla}"')).one()
                 print(f"[reset] tabla {tabla:24s} -> {total} filas")
         print(
-            "[reset] Base de datos reiniciada OK. 'usuarios' se sembrará "
-            f"automáticamente en el siguiente arranque (email="
-            f"{(settings.ADMIN_EMAIL or 'admin@pos.local').strip().lower()})."
+            "[reset] Base de datos reiniciada OK. Sin usuarios: el siguiente "
+            "arranque pide el alta inicial."
         )
     finally:
         db.close()

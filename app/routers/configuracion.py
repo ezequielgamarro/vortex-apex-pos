@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.errors import detalle_error_interno
 from app.database import get_db
 from app.dependencies import get_current_user, requiere_rol, UsuarioActual
 from app.models import ConfiguracionNegocio
@@ -54,7 +55,7 @@ def obtener_configuracion(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al leer la configuración: {str(exc)}",
+            detail=detalle_error_interno("Error al leer la configuración", exc),
         )
 
 
@@ -80,5 +81,5 @@ def actualizar_configuracion(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al guardar la configuración: {str(exc)}",
+            detail=detalle_error_interno("Error al guardar la configuración", exc),
         )

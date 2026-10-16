@@ -13,6 +13,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.errors import detalle_error_interno
 from app.database import get_db
 from app.dependencies import get_current_user, requiere_rol, UsuarioActual
 from app.models import Categoria
@@ -36,7 +37,7 @@ def listar_categorias(
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al listar categorías: {str(exc)}",
+            detail=detalle_error_interno("Error al listar categorías", exc),
         )
 
 
@@ -71,5 +72,5 @@ def crear_categoria(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al crear la categoría: {str(exc)}",
+            detail=detalle_error_interno("Error al crear la categoría", exc),
         )

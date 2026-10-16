@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Historial de Cajas | Punto de Venta</title>
+  <link rel="icon" type="image/png" href="./assets/favicon.png">
   <link href="./dist/css/app.css" rel="stylesheet" type="text/css">
   <!-- Anti-FOUC: aplica el tema ANTES del render (evita el flash blanco). -->
   <script src="./services/theme.js"></script>
@@ -11,15 +12,15 @@
 <body class="flex">
 
   <!-- ============================ SIDEBAR ============================ -->
-  <aside id="sidebar" class="fixed z-40 inset-y-0 left-0 w-64 bg-pos-bg border-r border-pos-secondary/60 transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:static" aria-label="Navegación principal">
+  <aside id="sidebar" class="rail fixed z-40 inset-y-0 left-0 w-64 transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:self-start shrink-0" aria-label="Navegación principal">
     <div class="flex flex-col h-full">
-      <a href="historial-cajas.html" class="flex items-center justify-center px-6 h-20 border-b border-pos-secondary/60">
-        <img src="./assets/vortex apex logo modo claro dentro del programa.webp" alt="VORTEX APEX" class="block w-full max-w-[14rem] h-auto dark:hidden">
-          <img src="./assets/vortex apex logo modo oscuro dentro del programa.webp" alt="VORTEX APEX" class="hidden w-full max-w-[14rem] h-auto dark:block">
+      <a href="pos.html" class="flex items-center px-6 h-16 shrink-0" aria-label="Vortex Apex, ir al inicio">
+        <img src="./assets/vx-wordmark-sobre-claro.webp" alt="VORTEX APEX" width="1000" height="78" class="block dark:hidden w-full max-w-[11.5rem] h-auto">
+        <img src="./assets/vx-wordmark-sobre-oscuro.webp" alt="VORTEX APEX" width="1000" height="82" class="hidden dark:block w-full max-w-[11.5rem] h-auto">
       </a>
       <!-- El menú lateral es renderizado dinámicamente por guard.js (renderSidebar).
            Single Source of Truth: no incluir enlaces estáticos aquí. -->
-      <nav id="sidebar-menu" class="flex-1 overflow-y-auto p-4 space-y-1"></nav>
+      <nav id="sidebar-menu" class="flex-1 overflow-y-auto px-3 pb-4 pt-3 space-y-1" aria-label="Secciones"></nav>
     </div>
   </aside>
   <div id="sidebar-overlay" class="fixed inset-0 z-30 bg-pos-overlay/50 backdrop-blur-sm lg:hidden hidden"></div>
@@ -28,12 +29,12 @@
   <div class="flex flex-col flex-1 min-w-0">
 
     <!-- Header -->
-    <header class="sticky top-0 z-20 flex items-center gap-4 px-4 sm:px-6 h-16 bg-pos-bg border-b border-pos-secondary/60">
-      <button id="menu-toggle" class="p-2 -ml-2 rounded-lg text-pos-text-head hover:bg-pos-secondary/40 lg:hidden" type="button" aria-label="Abrir menú">
+    <header class="sticky top-0 z-20 flex items-center gap-4 px-4 sm:px-6 h-16 bg-pos-card border-b border-pos-secondary/70">
+      <button id="menu-toggle" class="icon-btn -ml-2 lg:hidden" type="button" aria-label="Abrir menú">
         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
-      <h4 class="text-lg font-semibold text-pos-text-head">Historial de Cajas</h4>
-      <button class="ml-auto flex items-center gap-2 p-1.5 rounded-lg hover:bg-pos-secondary/40" type="button">
+      <h4 class="font-marca text-base font-semibold text-pos-text-head">Historial de Cajas</h4>
+      <button class="ml-auto flex items-center gap-2 p-1.5 rounded-xl hover:bg-pos-secondary/50 transition-colors" type="button">
         <span class="flex items-center justify-center h-8 w-8 rounded-full bg-pos-primary text-pos-primary-text text-sm font-semibold" id="profile-initial">U</span>
         <span class="hidden sm:block text-sm font-medium text-pos-text-body" id="profile-name">Usuario</span>
         <span id="profile-rol"></span>
@@ -63,14 +64,14 @@
       </div>
 
       <!-- Vaciado -->
-      <div id="historial-vacio" class="hidden pos-card p-10 text-center text-pos-text-body/60">
+      <div id="historial-vacio" class="hidden pos-card p-10 text-center text-pos-text-body/70">
         <svg class="h-12 w-12 mx-auto mb-3 text-pos-text-body/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h2m4 0h4M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z"/></svg>
         <p class="font-medium text-pos-text-head">Aún no hay cajas cerradas.</p>
         <p class="text-sm mt-1">Cuando cierres un turno en "Control de Caja", aparecerá aquí con su ticket imprimible.</p>
       </div>
 
       <!-- Loading / Error -->
-      <p id="historial-cargando" class="text-pos-text-body/60 text-sm">Cargando historial…</p>
+      <p id="historial-cargando" class="text-pos-text-body/70 text-sm">Cargando historial…</p>
       <div id="historial-error" class="hidden text-pos-danger text-sm font-medium"></div>
 
       <!-- DataGrid de arqueos cerrados -->
@@ -103,17 +104,7 @@
   <div id="area-impresion" aria-hidden="true"></div>
 
   <!-- JS del layout (menú responsive) -->
-  <script>
-    (function () {
-      const menu = document.getElementById('menu-toggle');
-      const sidebar = document.getElementById('sidebar');
-      const overlay = document.getElementById('sidebar-overlay');
-      function closeS() { sidebar?.classList.add('-translate-x-full'); overlay?.classList.add('hidden'); }
-      function openS() { sidebar?.classList.remove('-translate-x-full'); overlay?.classList.remove('hidden'); }
-      menu?.addEventListener('click', () => sidebar?.classList.contains('-translate-x-full') ? openS() : closeS());
-      overlay?.addEventListener('click', closeS);
-    })();
-  </script>
+  <script src="./services/sidebar.js"></script>
 
   <!-- Seguridad: backend local JWT (sin Supabase) -->
   <script src="./services/config.js"></script>

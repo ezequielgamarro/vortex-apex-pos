@@ -11,15 +11,15 @@ Reglas de idempotencia y seguridad:
   * SÓLO siembra el admin cuando NO existe NINGÚN usuario en la tabla.
     Así nunca pisa una base que ya tiene administradores gestionados a mano,
     ni "reinicia" contraseñas en cada arranque.
-  * La contraseña se lee de entorno/settings (`ADMIN_PASSWORD`).
-    - Si se configura `ADMIN_PASSWORD`, se usa esa.
-    - Si NO se configura, se usa la credencial por defecto documentada
-      `admin@pos.local` / `admin123` (FALLBACK_*). Esto garantiza que el
-      dueño siempre pueda entrar de forma predecible en una instalación
-      nueva. Un responsable puede sobreescribir esta por defecto definiendo
-      `ADMIN_PASSWORD` en el entorno antes del primer arranque.
-    Solo se almacena el hash (nunca el valor en plano). Se recomienda cambiar
-    la contraseña por defecto en entornos reales que lo requieran.
+  * La contraseña se lee de entorno/settings (`ADMIN_PASSWORD`) y es OPCIONAL:
+    - Si se configura `ADMIN_PASSWORD` (desarrollo/automatización), se crea ese
+      administrador.
+    - Si NO se configura, NO se crea ninguna cuenta. Ya no existe una
+      credencial por defecto igual en todas las instalaciones: el primer
+      administrador de un cliente se da de alta con el asistente de primer
+      arranque, que exige un código firmado por el proveedor
+      (ver `app/routers/setup.py`).
+    Solo se almacena el hash (nunca el valor en plano).
 """
 
 import logging
@@ -34,7 +34,6 @@ logger = logging.getLogger("uvicorn.error")
 # Valores por defecto (una instalación puede personalizarlos vía entorno):
 FALLBACK_EMAIL = "admin@pos.local"
 FALLBACK_NOMBRE = "Administrador"
-FALLBACK_PASSWORD = "admin123"
 
 
 def _email_default() -> str:
@@ -45,33 +44,31 @@ def _nombre_default() -> str:
     return (settings.ADMIN_NOMBRE_COMPLETO or FALLBACK_NOMBRE).strip()
 
 
-def _password_default() -> str:
-    """Contraseña a usar si no se configura ADMIN_PASSWORD.
-    Prioridad:
-      1. Valor explícito en settings.ADMIN_PASSWORD (recomendado en prod).
-      2. Fallback documentado FALLBACK_PASSWORD ("admin123").
-    """
-    plano = (settings.ADMIN_PASSWORD or "").strip()
-    return plano or FALLBACK_PASSWORD
-
-
 def crear_admin_si_hace_falta(db: Session) -> tuple[bool, str | None]:
-    """Siembra el admin por defecto SOLO si la tabla de usuarios está vacía.
+    """Siembra un admin SOLO si la base está vacía Y hay ADMIN_PASSWORD definida.
 
     Returns:
         (creado: bool, password_plano: Optional[str])
-        - password_plano siempre es None: la contraseña se define por
-          ADMIN_PASSWORD o el fallback documentado (admin123) y nunca se
-          expone en plano desde aquí.
+        - password_plano siempre es None: la contraseña viene de
+          ADMIN_PASSWORD y nunca se expone en plano desde aquí.
     """
     total_usuarios = db.query(func.count(Usuario.id)).scalar() or 0
     if total_usuarios:
         # No es una base "virgen": no pisamos lo que haya.
         return False, None
 
+    plano = (settings.ADMIN_PASSWORD or "").strip()
+    if not plano:
+        # Instalación nueva sin semilla: queda esperando el asistente de alta.
+        logger.info(
+            "[seed] Base vacía y sin ADMIN_PASSWORD: no se crea ningún usuario. "
+            "Falta el alta inicial (asistente de primer arranque)."
+        )
+        return False, None
+
     email = _email_default()
     nombre = _nombre_default()
-    password_hash = hash_password(_password_default())
+    password_hash = hash_password(plano)
     admin = Usuario(
         email=email,
         nombre_completo=nombre,
@@ -85,7 +82,7 @@ def crear_admin_si_hace_falta(db: Session) -> tuple[bool, str | None]:
 
     logger.info(
         "[seed] Base de datos vacía. Usuario administrador creado "
-        "-> id=%s email=%s rol=%s (password: fallback ADMIN_PASSWORD o 'admin123')",
+        "-> id=%s email=%s rol=%s (contraseña tomada de ADMIN_PASSWORD)",
         admin.id,
         admin.email,
         admin.rol,

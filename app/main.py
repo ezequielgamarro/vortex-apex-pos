@@ -27,6 +27,7 @@ from app.routers import (
     configuracion,
     licencia,
     exportar,
+    setup,
 )
 
 
@@ -79,6 +80,18 @@ async def lifespan(app: FastAPI):
     from app.database import SessionLocal  # noqa: PLC0415
 
     logger = logging.getLogger("uvicorn.error")
+
+    # Crea (si falta) el secreto propio de esta instalación al arrancar, no
+    # recién cuando llega el primer inicio de sesión.
+    from app.config import obtener_secreto  # noqa: PLC0415
+
+    obtener_secreto()
+
+    # Respaldo ANTES de tocar el esquema (si pasaron más de ~20 h del último).
+    from app.services.backup import respaldar_si_corresponde  # noqa: PLC0415
+
+    respaldar_si_corresponde()
+
     try:
         Base.metadata.create_all(bind=engine)
         logger.info("Base de datos SQLite verificada y tablas sincronizadas.")
@@ -91,6 +104,11 @@ async def lifespan(app: FastAPI):
             run_light_migrations(_db)
         finally:
             _db.close()
+
+        # Migraciones versionadas (Alembic): base marcada + cambios futuros.
+        from app.migraciones_alembic import aplicar_migraciones  # noqa: PLC0415
+
+        aplicar_migraciones()
 
         # Siembra automática del administrador en base vacía (producción).
         from app.seed import crear_admin_si_hace_falta  # noqa: PLC0415
@@ -116,24 +134,29 @@ async def lifespan(app: FastAPI):
     engine.dispose()
 
 
+_es_desarrollo = settings.ENV.strip().lower() == "development"
+
 # Instancia de la aplicación
 app = FastAPI(
     title=settings.APP_NAME,
     description="Backend para sistema de punto de venta de quiosco/drugstore.",
     version=settings.APP_VERSION,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    # La documentación interactiva describe toda la API: solo en desarrollo.
+    docs_url="/docs" if _es_desarrollo else None,
+    redoc_url="/redoc" if _es_desarrollo else None,
+    openapi_url="/openapi.json" if _es_desarrollo else None,
     lifespan=lifespan,
 )
 
-# Configuración de CORS (orígenes desde settings, evita cáscara dura)
+# Configuración de CORS: solo los orígenes de la propia app (ver
+# `Settings.cors_origins_list`). La sesión viaja en el header Authorization, no
+# en cookies, por eso no se habilitan credenciales.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
@@ -142,6 +165,13 @@ app.add_middleware(
 from app.middleware.licencia import LicenciaMiddleware  # noqa: E402
 
 app.add_middleware(LicenciaMiddleware)
+
+# Cabeceras de seguridad (CSP estricta, nosniff, anti-clickjacking). Se agrega
+# AL FINAL para que sea el middleware más externo y alcance TODAS las
+# respuestas, incluidas las de bloqueo por licencia (402) y los errores.
+from app.middleware.seguridad import CabecerasSeguridadMiddleware  # noqa: E402
+
+app.add_middleware(CabecerasSeguridadMiddleware)
 
 
 # Manejador de errores de autenticación/autorización
@@ -172,7 +202,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 @app.get("/health", tags=["Health"])
 def health() -> dict:
     """Healthcheck interno para Electron / orquestadores."""
-    return {"status": "healthy", "env": settings.ENV}
+    return {"status": "healthy"}
 
 
 @app.get("/", tags=["Health"])
@@ -194,6 +224,7 @@ app.include_router(ventas.router, prefix=settings.API_PREFIX)
 app.include_router(arqueo.router, prefix=settings.API_PREFIX)
 app.include_router(reportes.router, prefix=settings.API_PREFIX)
 app.include_router(auth.router, prefix=settings.API_PREFIX)
+app.include_router(setup.router, prefix=settings.API_PREFIX)
 app.include_router(categorias.router, prefix=settings.API_PREFIX)
 app.include_router(cuentas.router, prefix=settings.API_PREFIX)
 app.include_router(configuracion.router, prefix=settings.API_PREFIX)

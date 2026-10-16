@@ -14,6 +14,7 @@
 import { api } from './api.js';
 import { mostrarAlerta, exponerUIglobal } from './ui.js';
 import { instalarAtajosPOS } from './atajos.js';
+import { instalarLector, normalizarCodigo } from './lector.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -150,13 +151,13 @@ function renderCatalogo(productos, esFiltro = false) {
 
   // Catálogo global vacío ⇒ único mensaje legítimo: no hay inventario.
   if (!catalogoCompleto.length) {
-    grid.innerHTML = '<p class="col-span-full text-center text-pos-text-body/60 py-8">Sin productos. Agrega inventario primero.</p>';
+    grid.innerHTML = '<p class="col-span-full text-center text-pos-text-body/70 py-8">Sin productos. Agrega inventario primero.</p>';
     return;
   }
 
   const sinResultados = esFiltro && (!productos || !productos.length);
   if (sinResultados) {
-    grid.innerHTML = '<p class="col-span-full text-center text-pos-text-body/60 py-8">No se encontraron coincidencias</p>';
+    grid.innerHTML = '<p class="col-span-full text-center text-pos-text-body/70 py-8">No se encontraron coincidencias</p>';
     return;
   }
 
@@ -179,28 +180,21 @@ function renderCatalogo(productos, esFiltro = false) {
     // `h-full` funciona porque el grid-item estira a la altura de la fila.
     // `min-w-0` evita que contenido largo (nombre/código) desborde su celda.
     card.className =
-      'pos-card p-4 text-left min-w-0 h-full flex flex-col justify-between gap-2 hover:border-pos-primary hover:shadow-pos-primary transition-all ' +
+      'pos-card producto-card p-4 text-left min-w-0 h-full flex flex-col justify-between gap-2 ' +
       (agotado ? 'opacity-60 cursor-not-allowed' : '');
     card.disabled = agotado;
     card.innerHTML = `
       <div class="flex items-start justify-between gap-2 min-w-0">
-        <h5 class="text-sm font-semibold text-pos-text-head min-w-0 flex-1 line-clamp-2">${p.nombre}</h5>
+        <h5 class="text-sm font-semibold text-pos-text-head min-w-0 flex-1 line-clamp-2">${esc(p.nombre)}</h5>
         <div class="flex flex-wrap justify-end gap-1 shrink-0">
-          ${
-            !servicio && stockEstado === 'poco'
-              ? '<span class="badge badge-warning">Poco Stock</span>'
-              : agotado
-                ? '<span class="badge badge-danger">Agotado</span>'
-                : ''
-          }
           ${pesos ? '<span class="badge badge-neutral">por ' + etiquetaUnidadContinua(p) + '</span>' : ''}
           ${servicio ? '<span class="badge badge-neutral">servicio</span>' : ''}
         </div>
       </div>
-      <p class="text-pos-text-body/50 text-xs truncate min-w-0">${p.codigo_barras || 'Sin código'}</p>
-      <div class="mt-auto flex items-baseline justify-between gap-2 min-w-0 flex-wrap">
-        <span class="text-base font-bold text-pos-primary whitespace-nowrap">${money(p.precio)}<span class="text-xs font-normal text-pos-text-body/50">${sufPrecio}</span></span>
-        <span class="text-xs text-pos-text-body/50 whitespace-nowrap">${servicio && Number(p.stock || 0) <= 0 ? 'ilimitado' : 'stock: ' + stockTxt + (pesos ? ' ' + etiquetaUnidadContinua(p) : '')}</span>
+      <p class="text-pos-text-body/70 text-xs truncate min-w-0">${esc(p.codigo_barras || 'Sin código')}</p>
+      <div class="mt-auto flex flex-col gap-1.5 min-w-0">
+        <span class="text-lg font-bold leading-none text-pos-text-head whitespace-nowrap">${money(p.precio)}<span class="text-xs font-medium text-pos-text-body/70">${sufPrecio}</span></span>
+        <span class="inline-flex items-center gap-1.5 text-xs whitespace-nowrap ${agotado ? 'text-pos-danger font-semibold' : stockEstado === 'poco' && !servicio ? 'text-pos-warning font-semibold' : 'text-pos-text-body/80'}"><span class="h-1.5 w-1.5 rounded-full ${agotado ? 'bg-pos-danger' : stockEstado === 'poco' && !servicio ? 'bg-pos-warning' : 'bg-pos-success'}" aria-hidden="true"></span>${agotado ? 'Agotado' : servicio && Number(p.stock || 0) <= 0 ? 'ilimitado' : (stockEstado === 'poco' && !servicio ? 'Poco stock · ' + stockTxt : stockTxt + (pesos ? ' ' + etiquetaUnidadContinua(p) : ' en stock'))}</span>
       </div>`;
     card.addEventListener('click', () => onSelectProducto(p));
     grid.appendChild(card);
@@ -460,10 +454,11 @@ function renderCarrito() {
   cont.innerHTML = '';
 
   if (!carrito.length) {
-    cont.innerHTML = '<p class="text-center text-pos-text-body/60 text-sm py-8">El carrito está vacío</p>';
+    cont.innerHTML = '<div class="vacio"><svg class="h-9 w-9 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/></svg><p class="font-semibold text-pos-text-head">El carrito está vacío</p><p>Escaneá un código o tocá un producto para empezar.</p></div>';
     $('carrito-subtotal').textContent = money(0);
     $('carrito-descuentos').textContent = '-$0.00';
     $('carrito-total').textContent = money(0);
+    actualizarEncabezadoCarrito();
     return;
   }
 
@@ -476,18 +471,25 @@ function renderCarrito() {
     const detalle = detalleLinea(linea);
 
     const row = document.createElement('div');
-    row.className = 'flex items-center justify-between gap-3 py-2 border-b border-pos-secondary/30 last:border-0';
+    row.className = 'flex items-center gap-3 py-3 border-b border-pos-secondary/50 last:border-0';
+    const conStepper = linea.modo === 'unidad' || linea.modo === 'porcion';
+    const stepper = conStepper
+      ? `<div class="flex items-center shrink-0 rounded-xl border border-pos-secondary/80">
+          <button type="button" data-menos="${producto.id}" class="icon-btn !h-9 !w-9" aria-label="Quitar una unidad de ${esc(producto.nombre)}"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"/></svg></button>
+          <span class="min-w-[1.75rem] text-center text-base font-semibold text-pos-text-head">${esc(linea.cantidad)}</span>
+          <button type="button" data-mas="${producto.id}" class="icon-btn !h-9 !w-9" aria-label="Agregar una unidad de ${esc(producto.nombre)}"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"/></svg></button>
+        </div>`
+      : '';
     row.innerHTML = `
-      <div class="min-w-0">
-        <p class="text-sm font-medium text-pos-text-head truncate">${producto.nombre}</p>
-        <p class="text-xs text-pos-text-body/60">${detalle}</p>
+      <div class="min-w-0 flex-1">
+        <p class="text-base font-medium text-pos-text-head truncate">${esc(producto.nombre)}</p>
+        <p class="text-sm text-pos-text-body/70 truncate">${esc(detalle)}</p>
       </div>
-      <div class="flex items-center gap-2 shrink-0">
-        <span class="text-sm font-semibold">${money(importe)}</span>
-        <button data-quitar="${producto.id}" class="text-pos-danger hover:text-pos-danger/80" aria-label="Quitar">
-          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        </button>
-      </div>`;
+      ${stepper}
+      <span class="shrink-0 min-w-[4.5rem] text-right text-base font-semibold text-pos-text-head">${money(importe)}</span>
+      <button data-quitar="${producto.id}" class="icon-btn !h-9 !w-9 shrink-0 text-pos-danger hover:!bg-pos-danger/10" aria-label="Quitar ${esc(producto.nombre)}">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>`;
     cont.appendChild(row);
   });
 
@@ -498,8 +500,27 @@ function renderCarrito() {
   cont.querySelectorAll('[data-quitar]').forEach((btn) =>
     btn.addEventListener('click', () => quitarDelCarrito(btn.dataset.quitar))
   );
+  cont.querySelectorAll('[data-menos], [data-mas]').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.menos ?? btn.dataset.mas;
+      const linea = carrito.find((l) => String(l.producto.id) === String(id));
+      if (linea) agregarUnidad(linea.producto, btn.dataset.mas !== undefined ? 1 : -1);
+    })
+  );
+  actualizarEncabezadoCarrito();
 
   actualizarVuelto();
+}
+
+/** Contador de ítems y botón "Vaciar" del encabezado del carrito. */
+function actualizarEncabezadoCarrito() {
+  const n = carrito.length;
+  const contador = $('carrito-contador');
+  if (contador) {
+    contador.textContent = String(n);
+    contador.classList.toggle('hidden', n === 0);
+  }
+  $('btn-vaciar-carrito')?.classList.toggle('hidden', n === 0);
 }
 
 /** Texto descriptivo de la línea según su modo. */
@@ -655,12 +676,46 @@ function cerrarModalVentaCompletada() {
   if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
 }
 
-/** Limpia el POS para una nueva venta: carrito, buscador y foco. */
+/** El enlace "+ Cliente" solo aparece con el campo plegado y fuera de cuenta corriente. */
+function sincronizarClienteLibre() {
+  const abierto = !$('cliente-venta')?.classList.contains('hidden');
+  const esCC = $('metodo-pago')?.value === 'cuenta_corriente';
+  $('btn-agregar-cliente')?.classList.toggle('hidden', abierto || esCC);
+}
+
+/** Cliente libre plegado: solo el enlace "+ Cliente" del encabezado. */
+function plegarCliente() {
+  $('cliente-venta')?.classList.add('hidden');
+  sincronizarClienteLibre();
+}
+
+/** Despliega el campo de cliente y le da el foco. */
+function desplegarCliente() {
+  const campo = $('cliente-venta');
+  campo?.classList.remove('hidden');
+  sincronizarClienteLibre();
+  campo?.focus();
+}
+
+/** Vacía los datos del cobro anterior: monto abonado, vuelto y cliente. */
+function limpiarDatosDeCobro() {
+  const pagaCon = $('paga-con');
+  if (pagaCon) pagaCon.value = '';
+  const clienteLibre = $('cliente-venta');
+  if (clienteLibre) clienteLibre.value = '';
+  plegarCliente();
+  const clienteCC = $('select-cliente-cc');
+  if (clienteCC) clienteCC.value = '';
+  actualizarVuelto();
+}
+
+/** Limpia el POS para una nueva venta: carrito, buscador, cobro y foco. */
 function reiniciarPOS() {
   carrito = [];
   renderCarrito();
   const search = $('pos-search');
   if (search) { search.value = ''; onSearch(''); }
+  limpiarDatosDeCobro();
   cerrarModalVentaCompletada();
   // El foco SIEMPRE vuelve al buscador (continuidad del escaneo).
   setTimeout(() => search?.focus(), 50);
@@ -680,6 +735,7 @@ function vaciarCarrito() {
   if (!ok) return;
   carrito = [];
   renderCarrito();
+  limpiarDatosDeCobro();
   mostrarAlerta('Carrito vaciado', 'ok');
 }
 
@@ -701,7 +757,7 @@ function imprimirComprobanteVenta() {
     const detalle = linea ? detalleLinea(linea) : '';
     const imp = linea ? importeLinea(linea) : 0;
     return `<tr>
-      <td class="t-izq">${nombre}${detalle ? `<br><span class="t-muted">${detalle}</span>` : ''}</td>
+      <td class="t-izq">${esc(nombre)}${detalle ? `<br><span class="t-muted">${esc(detalle)}</span>` : ''}</td>
       <td class="t-der">${money(imp)}</td>
     </tr>`;
   }).join('');
@@ -758,6 +814,8 @@ function toggleMetodoPago() {
   $('bloque-cliente-libre').classList.toggle('hidden', esCC);
   $('bloque-cliente-cc').classList.toggle('hidden', !esCC);
   $('bloque-vuelto').classList.toggle('hidden', !esEfectivo);
+  $('fila-vuelto')?.classList.toggle('hidden', !esEfectivo);
+  sincronizarClienteLibre();
   
   if (esCC) poblarSelectClienteCC();
   if (esEfectivo) actualizarVuelto();
@@ -784,7 +842,7 @@ async function poblarSelectClienteCC() {
           .map((c) => {
             const saldo = Number(c.saldo_deuda || 0);
             const etiqueta = saldo > 0 ? `${c.nombre} (debe ${money(saldo)})` : c.nombre;
-            return `<option value="${c.id}">${etiqueta}</option>`;
+            return `<option value="${esc(c.id)}">${esc(etiqueta)}</option>`;
           })
           .join('');
     } else {
@@ -835,6 +893,46 @@ async function guardarClienteNuevo() {
   }
 }
 
+/** ¿El usuario de la sesión es administrador? */
+function esAdminSesion() {
+  try {
+    return JSON.parse(localStorage.getItem('user') || 'null')?.rol === 'admin';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resuelve un código leído (lector global o buscador): catálogo local primero,
+ * backend como respaldo. Si no existe, el admin recibe un acceso directo para
+ * crear el producto con ese código; el cajero solo ve el aviso.
+ */
+async function procesarCodigoEscaneado(crudo) {
+  const codigo = normalizarCodigo(crudo);
+  if (!codigo) return;
+  const minusc = codigo.toLowerCase();
+  let producto = catalogoCompleto.find(
+    (p) => p.codigo_barras && p.codigo_barras.toLowerCase() === minusc
+  );
+  if (!producto) {
+    try {
+      producto = await api.getByBarcode(codigo);
+    } catch (e) {
+      producto = null;
+    }
+  }
+  if (!producto) {
+    mostrarAlerta(`El código ${codigo} no está cargado.`, 'warn', {
+      duracionMs: 9000,
+      accion: esAdminSesion()
+        ? { texto: 'Crear producto con este código', href: `inventario.html?nuevo=${encodeURIComponent(codigo)}` }
+        : null,
+    });
+    return;
+  }
+  onSelectProducto(producto);
+}
+
 /** -- Buscador / escáner de código de barras ----------
  * Enter: si la búsqueda escrita dejó UNA única coincidencia la agrega al
  * carrito (flujo rápido). Si además coincide EXACTO con un código de barras,
@@ -875,8 +973,15 @@ function escanear(ev) {
     return;
   }
   if (coinciden.length === 0) {
-    mostrarAlerta('Producto no encontrado', 'error');
+    // Si parece un código (una sola palabra, 4+ caracteres) se consulta el
+    // backend por si el catálogo local quedó desactualizado.
+    if (/^\S{4,}$/.test(texto)) {
+      procesarCodigoEscaneado(texto);
+    } else {
+      mostrarAlerta('Producto no encontrado', 'error');
+    }
     input.value = '';
+    onSearch('');
     // El foco se restituye también tras el auto-cierre de la alerta.
     input.focus();
     return;
@@ -995,6 +1100,9 @@ async function init() {
   // El listener está ACOTADO al input #pos-search (no es global), y sólo
   // intercepta Enter. Aun así, si hay un modal abierto NO debe secuestrar el
   // evento: la escritura nativa y el Enter del modal deben tener prioridad.
+  // Lector USB/Bluetooth: funciona aunque el foco no esté en el buscador.
+  instalarLector(procesarCodigoEscaneado);
+
   const search = $('pos-search');
   search.addEventListener('input', (e) => onSearch(e.target.value));
   search.addEventListener('keydown', (e) => {
@@ -1028,6 +1136,8 @@ async function init() {
     // Estado inicial según método por defecto (efectivo).
     toggleMetodoPago();
   }
+  $('btn-agregar-cliente')?.addEventListener('click', desplegarCliente);
+  $('btn-vaciar-carrito')?.addEventListener('click', vaciarCarrito);
   const inputPagaCon = $('paga-con');
   if (inputPagaCon) {
       inputPagaCon.addEventListener('input', actualizarVuelto);
@@ -1044,7 +1154,7 @@ async function init() {
   try {
     await cargarProductos();
   } catch (e) {
-    $('pos-catalogo').innerHTML = `<p class="col-span-full text-center text-pos-danger py-8">No se pudieron cargar los productos: ${e.message}</p>`;
+    $('pos-catalogo').innerHTML = `<p class="col-span-full text-center text-pos-danger py-8">No se pudieron cargar los productos: ${esc(e.message)}</p>`;
   }
 }
 

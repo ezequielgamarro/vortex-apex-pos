@@ -48,7 +48,9 @@ const metodoLabel = (m) => METODO_LABEL[m] || m || '—';
 // tanto en claro como en oscuro.
 const COLOR_PRIMARY = '#6246ea';
 const COLOR_DANGER = '#e45858';
-const PALETA = [COLOR_PRIMARY, '#00c9a7', '#f9a826', COLOR_DANGER, '#8e7bff'];
+const PALETA = [COLOR_PRIMARY, '#12a594', '#e8a93a', COLOR_DANGER, '#9b8cff'];
+
+if (window.Chart) { window.Chart.defaults.font.family = '"Onest", system-ui, sans-serif'; }
 
 /** ¿Tema oscuro activo? (vía window.theme; fallback: clase en <html>). */
 function esTemaOscuro() {
@@ -61,8 +63,8 @@ function esTemaOscuro() {
 /** Devuelve los colores de texto/grid/leyenda según el tema activo. */
 function coloresTema() {
   return esTemaOscuro()
-    ? { texto: '#cbd5e1', grid: 'rgba(203,213,225,0.12)', borde: '#0f172a', primario: '#818cf8' }
-    : { texto: '#2b2c34', grid: 'rgba(43,44,52,0.08)', borde: '#fffffe', primario: COLOR_PRIMARY };
+    ? { texto: '#c0c1d2', grid: 'rgba(192,193,210,0.12)', borde: '#191a25', primario: '#8e7bff' }
+    : { texto: '#343548', grid: 'rgba(52,53,72,0.08)', borde: '#ffffff', primario: COLOR_PRIMARY };
 }
 
 // Instancias de Chart.js (se destruyen antes de recrear para evitar fugas).

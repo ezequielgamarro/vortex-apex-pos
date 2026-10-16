@@ -27,6 +27,7 @@ from app.dependencies import (
     UsuarioActual,
 )
 from app.models import Usuario
+from app.services.login_guard import login_guard
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
@@ -56,18 +57,6 @@ class TokenRespuesta(BaseModel):
     token_type: str = "bearer"
 
 
-class RegisterRequest(BaseModel):
-    """Payload del alta de usuario (registro público/local)."""
-
-    nombre: str = Field(..., min_length=1, max_length=255)
-    email: str
-    password: str = Field(..., min_length=6)
-
-    _normalizar_email = validator("email", allow_reuse=True)(
-        lambda v: v.strip().lower()
-    )
-
-
 class AdminCrearUsuario(BaseModel):
     """Payload para crear un usuario desde la gestión del admin (con rol)."""
 
@@ -87,50 +76,9 @@ class AdminCrearUsuario(BaseModel):
     )
 
 
-@router.post(
-    "/register",
-    response_model=TokenRespuesta,
-    summary="Registrar un nuevo usuario (rol cajero por defecto)",
-)
-def registrar_usuario(
-    data: RegisterRequest,
-    db: Session = Depends(get_db),
-):
-    """Crea un usuario nuevo en SQLite y devuelve un token para iniciar sesión.
-
-    Reglas:
-      - El email debe ser único (rechaza duplicados con 409).
-      - El rol asignado por defecto es 'cajero' (nunca 'admin').
-      - El usuario se crea activo; un admin puede gestionar rol/estado después.
-    """
-    email = data.email.strip().lower()
-    existe = db.query(Usuario).filter(Usuario.email == email).first()
-    if existe is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Ya existe una cuenta con ese correo electrónico",
-        )
-
-    usuario = Usuario(
-        email=email,
-        nombre_completo=data.nombre.strip(),
-        password_hash=hash_password(data.password),
-        rol="cajero",
-        activo=True,
-    )
-    db.add(usuario)
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Ya existe una cuenta con ese correo electrónico",
-        )
-    db.refresh(usuario)
-
-    token = crear_token_acceso(subject=usuario.id, rol=usuario.rol)
-    return TokenRespuesta(access_token=token)
+# No hay registro público: los usuarios los crea un administrador
+# (`POST /auth/usuarios`) y el primero se da de alta con el asistente de primer
+# arranque (`app/routers/setup.py`), que exige un código firmado por el proveedor.
 
 
 @router.post("/login", response_model=TokenRespuesta, summary="Iniciar sesión")
@@ -143,15 +91,31 @@ def login(
     El body esperado es `application/x-www-form-urlencoded` con los campos
     `username` y `password` (formato OAuth2 estándar).
     """
-    usuario = db.query(Usuario).filter(Usuario.email == form_data.username).first()
+    clave = login_guard.clave(form_data.username)
+    espera = login_guard.segundos_bloqueado(clave)
+    if espera:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                "Demasiados intentos fallidos. "
+                f"Probá de nuevo en {(espera + 59) // 60} minuto(s)."
+            ),
+            headers={"Retry-After": str(espera)},
+        )
+
+    usuario = (
+        db.query(Usuario).filter(Usuario.email == form_data.username.strip().lower()).first()
+    )
     if usuario is None or not verificar_password(
         form_data.password, usuario.password_hash
     ):
+        login_guard.registrar_fallo(clave)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales incorrectas",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    login_guard.registrar_exito(clave)
     if not usuario.activo:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -329,12 +293,11 @@ def crear_usuario_admin(
     if es_superadmin(usuario.email):
         rubro = _normalizar_rubro(data.rubro)
     else:
-        admin_comercio = (
-            db.query(Usuario).filter(Usuario.email == email_superadmin()).first()
-        )
-        rubro = _normalizar_rubro(
-            admin_comercio.rubro if admin_comercio is not None else None
-        )
+        # El rubro del comercio lo fijó el proveedor en el código de alta del
+        # primer administrador; los usuarios que crea un admin heredan el de
+        # quien los crea.
+        creador = db.query(Usuario).filter(Usuario.id == usuario.id).first()
+        rubro = _normalizar_rubro(creador.rubro if creador is not None else None)
 
     nuevo = Usuario(
         email=email,

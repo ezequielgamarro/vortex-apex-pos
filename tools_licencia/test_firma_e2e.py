@@ -68,7 +68,8 @@ def main() -> int:
             r.valido
             and r.fecha_vencimiento == VENCE
             and r.dias_gracia == 7
-            and r.huella == calcular_hash_huella(CLIENTE_ID),
+            # Lo firmado es un prefijo (8 caracteres en VX1) del hash completo.
+            and calcular_hash_huella(CLIENTE_ID).startswith(r.huella),
             "Caso feliz: licencia legítima se acepta en su máquina",
             r.motivo,
         )

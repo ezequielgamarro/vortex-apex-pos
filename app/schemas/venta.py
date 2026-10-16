@@ -32,18 +32,20 @@ class VentaItem(BaseModel):
     cantidad: Optional[Decimal] = Field(
         None,
         gt=0,
+        le=999_999,
         description="Cantidad física (unidades o kg). Alternativo a importe.",
     )
     importe: Optional[Decimal] = Field(
         None,
         gt=0,
+        le=999_999_999,
         description="Importe ($) a cobrar. Para venta por peso: se deriva la cantidad exacta.",
     )
     precio_unitario: Optional[Decimal] = Field(
-        None, gt=0, description="Precio por unidad (si no se envía, se toma de la BD)"
+        None, gt=0, le=999_999_999, description="Precio por unidad (si no se envía, se toma de la BD)"
     )
     descuento: Decimal = Field(
-        Decimal("0"), ge=0, description="Descuento total del ítem"
+        Decimal("0"), ge=0, le=999_999_999, description="Descuento total del ítem"
     )
 
     @model_validator(mode="after")

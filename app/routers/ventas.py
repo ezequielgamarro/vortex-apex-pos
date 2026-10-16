@@ -22,6 +22,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, selectinload
 
+from app.errors import detalle_error_interno
+from app.routers.arqueo import caja_abierta_de
 from app.database import get_db
 from app.dependencies import get_current_user, requiere_rol, UsuarioActual
 from app.models import (
@@ -152,12 +154,12 @@ def registrar_venta(
         # 0) Caja obligatoria: una venta no puede procesarse sin una caja abierta
         #    en el turno actual (evita descuentos de stock/discrepancias de dinero
         #    fuera de un arqueo vigente).
-        caja_abierta = db.query(Arqueo).filter(Arqueo.estado == "abierto").first()
+        caja_abierta = caja_abierta_de(db, usuario.id)
         if caja_abierta is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
-                    "No hay una caja abierta. Es obligatorio abrir la caja "
+                    "No tienes una caja abierta. Es obligatorio abrir tu caja "
                     "antes de registrar cobros."
                 ),
             )
@@ -254,6 +256,7 @@ def registrar_venta(
 
         # 3) Cabecera de venta (flush para obtener el id sin commitear).
         venta_nueva = Venta(
+            usuario_id=usuario.id,
             folio=folio,
             total=total_venta,
             metodo_pago=venta.metodo_pago,
@@ -311,7 +314,7 @@ def registrar_venta(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al registrar la venta: {str(exc)}",
+            detail=detalle_error_interno("Error al registrar la venta", exc),
         )
 
 
@@ -323,9 +326,14 @@ def historial_ventas(
     usuario: UsuarioActual = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Devuelve el historial de ventas, opcionalmente filtrado por fechas o cliente."""
+    """Devuelve el historial de ventas, opcionalmente filtrado por fechas o cliente.
+
+    Un cajero ve solo las ventas que cobró él; el administrador ve todas.
+    """
     try:
         query = db.query(Venta)
+        if usuario.rol != "admin":
+            query = query.filter(Venta.usuario_id == usuario.id)
         if fecha_desde:
             _desde = datetime.combine(fecha_desde, datetime.min.time())
             query = query.filter(Venta.fecha >= _desde)
@@ -338,7 +346,7 @@ def historial_ventas(
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al consultar historial de ventas: {str(exc)}",
+            detail=detalle_error_interno("Error al consultar historial de ventas", exc),
         )
 
 
@@ -393,14 +401,14 @@ def anular_venta(
                 detail="Contraseña incorrecta.",
             )
 
-        # La venta debe pertenecer al turno ABIERTO para poder anularse.
-        caja_abierta = db.query(Arqueo).filter(Arqueo.estado == "abierto").first()
+        # La venta debe pertenecer al turno ABIERTO de quien la cobró.
+        caja_abierta = caja_abierta_de(db, venta.usuario_id)
         if caja_abierta is None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
-                    "No hay una caja abierta. Solo pueden anularse ventas del "
-                    "turno en curso."
+                    "Quien cobró esta venta no tiene una caja abierta. Solo "
+                    "pueden anularse ventas del turno en curso."
                 ),
             )
         if venta.fecha < caja_abierta.fecha_apertura:
@@ -480,7 +488,7 @@ def anular_venta(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al anular la venta: {str(exc)}",
+            detail=detalle_error_interno("Error al anular la venta", exc),
         )
 
 
@@ -531,19 +539,18 @@ def historial_detallado(
         # Eager-load por lotes (selectinload) para evitar el N+1 al materializar
         # cada ítem y su producto: se ejecutan 2-3 consultas en total en lugar de
         # una por ítem (~2500) — medido 1.2s -> decenas de ms.
-        ventas = (
-            db.query(Venta)
-            .options(selectinload(Venta.items).selectinload(VentaItem.producto))
-            .order_by(Venta.fecha.desc())
-            .limit(limite)
-            .all()
+        consulta = db.query(Venta).options(
+            selectinload(Venta.items).selectinload(VentaItem.producto)
         )
+        if usuario.rol != "admin":
+            consulta = consulta.filter(Venta.usuario_id == usuario.id)
+        ventas = consulta.order_by(Venta.fecha.desc()).limit(limite).all()
         return [_serializar_historial(v) for v in ventas]
     except Exception as exc:  # pragma: no cover
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al consultar historial detallado: {str(exc)}",
+            detail=detalle_error_interno("Error al consultar historial detallado", exc),
         )
 
 
@@ -556,7 +563,9 @@ def obtener_venta(
     """Devuelve el detalle de una venta puntual por su ID."""
     try:
         venta = db.query(Venta).filter(Venta.id == venta_id).first()
-        if venta is None:
+        if venta is None or (
+            usuario.rol != "admin" and venta.usuario_id != usuario.id
+        ):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Venta no encontrada",
@@ -567,7 +576,7 @@ def obtener_venta(
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al obtener la venta: {str(exc)}",
+            detail=detalle_error_interno("Error al obtener la venta", exc),
         )
 
 
@@ -584,7 +593,9 @@ def obtener_detalle_venta(
     """Devuelve una venta puntual con el detalle de todos sus ítems (productos)."""
     try:
         venta = db.query(Venta).filter(Venta.id == venta_id).first()
-        if venta is None:
+        if venta is None or (
+            usuario.rol != "admin" and venta.usuario_id != usuario.id
+        ):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Venta no encontrada",
@@ -614,5 +625,5 @@ def obtener_detalle_venta(
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al obtener el detalle de la venta: {str(exc)}",
+            detail=detalle_error_interno("Error al obtener el detalle de la venta", exc),
         )

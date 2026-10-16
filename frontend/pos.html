@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Punto de Venta</title>
+  <link rel="icon" type="image/png" href="./assets/favicon.png">
   <link href="./dist/css/app.css" rel="stylesheet" type="text/css">
   <!-- Anti-FOUC: aplica el tema ANTES del render (evita el flash blanco). -->
   <script src="./services/theme.js"></script>
@@ -11,15 +12,15 @@
 <body class="flex h-screen overflow-hidden">
 
   <!-- ============================ SIDEBAR ============================ -->
-  <aside id="sidebar" class="fixed z-40 inset-y-0 left-0 w-64 bg-pos-bg border-r border-pos-secondary/60 transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:static" aria-label="Navegación principal">
+  <aside id="sidebar" class="rail fixed z-40 inset-y-0 left-0 w-64 transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:self-start shrink-0" aria-label="Navegación principal">
     <div class="flex flex-col h-full">
-      <a href="pos.html" class="flex items-center justify-center px-6 h-20 border-b border-pos-secondary/60">
-        <img src="./assets/vortex apex logo modo claro dentro del programa.webp" alt="VORTEX APEX" class="block w-full max-w-[14rem] h-auto dark:hidden">
-          <img src="./assets/vortex apex logo modo oscuro dentro del programa.webp" alt="VORTEX APEX" class="hidden w-full max-w-[14rem] h-auto dark:block">
+      <a href="pos.html" class="flex items-center px-6 h-16 shrink-0" aria-label="Vortex Apex, ir al inicio">
+        <img src="./assets/vx-wordmark-sobre-claro.webp" alt="VORTEX APEX" width="1000" height="78" class="block dark:hidden w-full max-w-[11.5rem] h-auto">
+        <img src="./assets/vx-wordmark-sobre-oscuro.webp" alt="VORTEX APEX" width="1000" height="82" class="hidden dark:block w-full max-w-[11.5rem] h-auto">
       </a>
       <!-- El menú lateral es renderizado dinámicamente por guard.js (renderSidebar).
            Single Source of Truth: no incluir enlaces estáticos aquí. -->
-      <nav id="sidebar-menu" class="flex-1 overflow-y-auto p-4 space-y-1"></nav>
+      <nav id="sidebar-menu" class="flex-1 overflow-y-auto px-3 pb-4 pt-3 space-y-1" aria-label="Secciones"></nav>
     </div>
   </aside>
   <div id="sidebar-overlay" class="fixed inset-0 z-30 bg-pos-overlay/50 backdrop-blur-sm lg:hidden hidden"></div>
@@ -31,12 +32,12 @@
   <div class="flex flex-col flex-1 min-w-0 h-full min-h-0">
 
     <!-- Header: altura fija; shrink-0 evita que el flex-column lo comprima. -->
-    <header class="z-20 flex items-center gap-4 px-4 sm:px-6 h-16 shrink-0 bg-pos-bg border-b border-pos-secondary/60">
-      <button id="menu-toggle" class="p-2 -ml-2 rounded-lg text-pos-text-head hover:bg-pos-secondary/40 lg:hidden" type="button" aria-label="Abrir menú">
+    <header class="z-20 flex items-center gap-4 px-4 sm:px-6 h-16 shrink-0 bg-pos-card border-b border-pos-secondary/70">
+      <button id="menu-toggle" class="icon-btn -ml-2 lg:hidden" type="button" aria-label="Abrir menú">
         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
-      <h4 class="text-lg font-semibold text-pos-text-head">Punto de Venta</h4>
-      <button class="ml-auto flex items-center gap-2 p-1.5 rounded-lg hover:bg-pos-secondary/40" type="button">
+      <h4 class="font-marca text-base font-semibold text-pos-text-head">Punto de Venta</h4>
+      <button class="ml-auto flex items-center gap-2 p-1.5 rounded-xl hover:bg-pos-secondary/50 transition-colors" type="button">
         <span class="flex items-center justify-center h-8 w-8 rounded-full bg-pos-primary text-pos-primary-text text-sm font-semibold" id="profile-initial">U</span>
         <span class="hidden sm:block text-sm font-medium text-pos-text-body" id="profile-name">Usuario</span>
         <span id="profile-rol"></span>
@@ -46,15 +47,15 @@
     <!-- Contenido POS: flex-col en móvil, md:flex-row en escritorio.
          min-h-0 + overflow-hidden: acota la altura al espacio restante
          (100vh - header h-16) y delega el scroll a los paneles internos. -->
-    <main class="flex-1 flex flex-col md:flex-row p-4 sm:p-6 gap-4 sm:gap-6 min-h-0 overflow-hidden">
+    <main class="flex-1 flex flex-col md:flex-row p-4 sm:p-6 gap-4 sm:gap-6 min-h-0 overflow-hidden max-md:overflow-y-auto">
 
       <!-- ======== PANEL IZQUIERDO: CATÁLOGO ======== -->
       <!-- min-h-0: permite que el hijo flex-1/overflow-y-auto scrollee. -->
-      <div class="flex-1 flex flex-col min-w-0 min-h-0">
+      <div class="flex-1 flex flex-col min-w-0 min-h-0 max-md:shrink-0 max-md:min-h-[22rem]">
         <!-- Barra de búsqueda -->
         <div class="pos-card p-4 mb-4 shrink-0">
           <div class="relative">
-            <span class="absolute inset-y-0 left-3 flex items-center text-pos-text-body/60">
+            <span class="absolute inset-y-0 left-3 flex items-center text-pos-text-body/70">
               <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </span>
             <input id="pos-search" type="text" class="form-input-pos pl-10" placeholder="Buscar por nombre o código de barras...">
@@ -67,7 +68,7 @@
              Container Queries de `.pos-catalogo-wrap` (css/tailwind.css)
              afinan las columnas por el ANCHO REAL del panel, evitando el
              aplastamiento en monitores anchos cuando el carrito roba espacio. -->
-        <div class="flex-1 overflow-y-auto pr-1 min-h-0 pos-catalogo-wrap">
+        <div class="flex-1 overflow-y-auto pt-2 px-1.5 pb-2 min-h-0 pos-catalogo-wrap">
           <div id="pos-catalogo" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
             <!-- Tarjetas de producto generadas por JS -->
           </div>
@@ -76,7 +77,7 @@
 
       <!-- ======== PANEL DERECHO: CARRITO / COBRO ======== -->
       <!-- min-h-0: el h-full de la tarjeta interna necesita un padre acotado. -->
-      <div class="w-full md:w-96 lg:w-[26rem] flex flex-col min-w-0 min-h-0">
+      <div class="w-full md:w-96 lg:w-[28rem] 2xl:w-[32rem] flex flex-col min-w-0 min-h-0">
 
         <!-- Alerta: caja no abierta (se muestra al intentar cobrar sin caja) -->
         <div id="error-caja-sin-abrir" class="hidden mb-4 pos-card border-pos-danger/40 p-3">
@@ -87,7 +88,7 @@
               <p class="text-xs text-pos-text-body/80 mt-0.5">Es obligatorio abrir la caja antes de registrar cobros.</p>
               <a href="caja.html" class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-pos-primary hover:underline">Ir a Control de Caja</a>
             </div>
-            <button data-close-error class="text-pos-text-body/50 hover:text-pos-text-head shrink-0" aria-label="Cerrar">
+            <button data-close-error class="text-pos-text-body/70 hover:text-pos-text-head shrink-0" aria-label="Cerrar">
               <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
@@ -97,57 +98,64 @@
              alerta condicional de caja y habilita el scroll interno del carrito. -->
         <div class="pos-card flex flex-col flex-1 min-h-0 overflow-hidden">
 
+          <!-- Encabezado del carrito -->
+          <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-pos-secondary/70 shrink-0">
+            <div class="flex items-center gap-2 min-w-0">
+              <h2 class="text-base font-semibold text-pos-text-head">Venta actual</h2>
+              <span id="carrito-contador" class="badge badge-neutral hidden">0</span>
+            </div>
+            <div class="flex items-center gap-4 shrink-0">
+              <button type="button" id="btn-agregar-cliente" class="text-sm font-semibold text-pos-primary hover:underline">+ Cliente</button>
+              <button type="button" id="btn-vaciar-carrito" class="hidden text-sm font-medium text-pos-danger hover:underline">Vaciar</button>
+            </div>
+          </div>
+
           <!-- Lista del carrito (scroll) -->
-          <div class="flex-1 overflow-y-auto p-4 space-y-3 min-h-0" id="carrito-items">
-            <p class="text-center text-pos-text-body/60 text-sm py-8">El carrito está vacío</p>
+          <div class="flex-1 overflow-y-auto px-4 py-1 min-h-0" id="carrito-items">
+            <div class="vacio"><svg class="h-9 w-9 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/></svg><p class="font-semibold text-pos-text-head">El carrito está vacío</p><p>Escaneá un código o tocá un producto para empezar.</p></div>
           </div>
 
           <!-- Resumen y cobro (fijo al fondo, no scrollea) -->
-          <div class="border-t border-pos-secondary/40 p-2 sm:p-3 space-y-2 shrink-0 bg-pos-bg">
-            <div class="flex justify-between text-xs sm:text-sm">
-              <span class="text-pos-text-body/70">Subtotal</span>
-              <span class="font-semibold text-pos-text-head" id="carrito-subtotal">$0.00</span>
-            </div>
-            <div class="flex justify-between text-xs sm:text-sm hidden">
-              <span class="text-pos-text-body/70">Descuentos</span>
-              <span class="font-semibold text-pos-danger" id="carrito-descuentos">-$0.00</span>
-            </div>
-            <div class="flex justify-between text-sm sm:text-base font-bold">
-              <span class="text-pos-text-head">Total</span>
-              <span class="text-pos-primary" id="carrito-total">$0.00</span>
+          <div class="border-t border-pos-secondary/70 p-4 space-y-3 shrink-0 bg-pos-bg/60">
+            <!-- Subtotal y descuentos: se conservan ocultos (los usa pos.js). -->
+            <span class="hidden" id="carrito-subtotal">$0.00</span>
+            <span class="hidden" id="carrito-descuentos">-$0.00</span>
+
+            <div class="flex items-end justify-between gap-3">
+              <div class="flex flex-col">
+                <span class="text-sm font-semibold text-pos-text-head">Total</span>
+                <span id="fila-vuelto" class="hidden text-xs text-pos-text-body/70">Vuelto <span id="vuelto-monto" class="font-bold text-pos-success">$0</span></span>
+              </div>
+              <span class="text-3xl font-bold tracking-tight text-pos-text-head" id="carrito-total">$0.00</span>
             </div>
 
-            <!-- Método de pago -->
-            <select id="metodo-pago" class="form-input-pos !py-1.5 !text-sm">
-              <option value="efectivo">Efectivo</option>
-              <option value="tarjeta">Tarjeta</option>
-              <option value="transferencia">Transferencia</option>
-              <option value="mixto">Mixto</option>
-              <option value="cuenta_corriente">Cuenta Corriente</option>
-            </select>
-
-            <!-- Vuelto (solo efectivo): paga con / vuelto -->
-            <div id="bloque-vuelto" class="hidden">
-              <input id="paga-con" type="number" min="0" step="1" class="form-input-pos !py-1.5 !text-sm mb-1" placeholder="Paga con ($)" inputmode="decimal">
-              <div class="flex justify-between items-center text-xs">
-                <span class="text-pos-text-body/70">Vuelto</span>
-                <span id="vuelto-monto" class="font-bold text-pos-success">$0</span>
+            <!-- Método de pago + "Paga con" (efectivo) en la misma fila -->
+            <div class="flex items-center gap-2">
+              <select id="metodo-pago" class="form-input-pos !py-2 !text-sm flex-1 min-w-0" aria-label="Método de pago">
+                <option value="efectivo">Efectivo</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="mixto">Mixto</option>
+                <option value="cuenta_corriente">Cuenta Corriente</option>
+              </select>
+              <div id="bloque-vuelto" class="hidden flex-1 min-w-0">
+                <input id="paga-con" type="number" min="0" step="1" class="form-input-pos !py-2 !text-sm" placeholder="Paga con ($)" aria-label="Paga con" inputmode="decimal">
               </div>
             </div>
 
-            <!-- Cliente (nombre libre p/ efectivo/tarjeta/etc.) -->
-            <div id="bloque-cliente-libre">
-              <input id="cliente-venta" type="text" class="form-input-pos !py-1.5 !text-sm" placeholder="Cliente (opcional)">
+            <!-- Cliente (nombre libre): plegado hasta que se necesite -->
+            <div id="bloque-cliente-libre" class="[&:has(>input.hidden)]:hidden">
+              <input id="cliente-venta" type="text" class="hidden form-input-pos !py-2 !text-sm" placeholder="Cliente (opcional)" aria-label="Cliente">
             </div>
 
             <!-- Cuenta corriente: requiere SELECCIONAR un cliente del registro -->
             <div id="bloque-cliente-cc" class="hidden">
-              <select id="select-cliente-cc" class="form-input-pos !py-1.5 !text-sm mb-1"></select>
+              <select id="select-cliente-cc" class="form-input-pos !py-2 !text-sm mb-1" aria-label="Cliente de cuenta corriente"></select>
               <button type="button" id="btn-nuevo-cliente-cc" class="text-xs font-semibold text-pos-primary hover:underline">+ Registrar cliente nuevo</button>
             </div>
 
             <!-- Botón cobrar -->
-            <button id="btn-cobrar" class="btn-primary w-full !py-2 !text-sm">Cobrar venta</button>
+            <button id="btn-cobrar" class="btn-primary w-full !py-3 !text-base">Cobrar venta</button>
           </div>
         </div>
       </div>
@@ -160,13 +168,13 @@
        KILOS (cantidad) o por IMPORTE ($); el backend deriva la fracción. -->
   <div id="modal-peso" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
     <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
-    <div class="relative w-full max-w-md bg-pos-bg rounded-xl shadow-lg p-6">
+    <div class="relative w-full max-w-md pos-modal p-6">
       <div class="flex items-center justify-between mb-4">
         <div>
           <h4 class="text-lg font-semibold text-pos-text-head" id="peso-modal-titulo">Producto por peso</h4>
-          <p class="text-xs text-pos-text-body/60 mt-0.5" id="peso-modal-precio"></p>
+          <p class="text-xs text-pos-text-body/70 mt-0.5" id="peso-modal-precio"></p>
         </div>
-        <button type="button" class="text-pos-text-body/60 hover:text-pos-text-head" id="btn-peso-cancelar" aria-label="Cerrar">
+        <button type="button" class="text-pos-text-body/70 hover:text-pos-text-head" id="btn-peso-cancelar" aria-label="Cerrar">
           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
@@ -202,13 +210,13 @@
        para tipeo rápido (mismo patrón ergonómico que el modal de peso). -->
   <div id="modal-servicio" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
     <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
-    <div class="relative w-full max-w-md bg-pos-bg rounded-xl shadow-lg p-6">
+    <div class="relative w-full max-w-md pos-modal p-6">
       <div class="flex items-center justify-between mb-4">
         <div>
           <h4 class="text-lg font-semibold text-pos-text-head" id="servicio-modal-titulo">Servicio / Copia</h4>
-          <p class="text-xs text-pos-text-body/60 mt-0.5" id="servicio-modal-precio"></p>
+          <p class="text-xs text-pos-text-body/70 mt-0.5" id="servicio-modal-precio"></p>
         </div>
-        <button type="button" class="text-pos-text-body/60 hover:text-pos-text-head" id="btn-servicio-cancelar" aria-label="Cerrar">
+        <button type="button" class="text-pos-text-body/70 hover:text-pos-text-head" id="btn-servicio-cancelar" aria-label="Cerrar">
           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
@@ -249,13 +257,13 @@
   <!-- ===================== MODAL: NUEVO CLIENTE (cuenta corriente) ===================== -->
   <div id="modal-nuevo-cliente"  class="fixed inset-0 z-50 hidden items-center justify-center p-4">
     <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
-    <div class="relative w-full max-w-sm bg-pos-bg rounded-xl shadow-lg p-6">
+    <div class="relative w-full max-w-sm pos-modal p-6">
       <div class="flex items-center justify-between mb-4">
         <div>
           <h4 class="text-lg font-semibold text-pos-text-head">Nuevo cliente</h4>
-          <p class="text-xs text-pos-text-body/60">Se usará para la venta a cuenta corriente.</p>
+          <p class="text-xs text-pos-text-body/70">Se usará para la venta a cuenta corriente.</p>
         </div>
-        <button type="button" class="text-pos-text-body/60 hover:text-pos-text-head" id="btn-cliente-cancelar" aria-label="Cerrar">
+        <button type="button" class="text-pos-text-body/70 hover:text-pos-text-head" id="btn-cliente-cancelar" aria-label="Cerrar">
           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
@@ -282,7 +290,7 @@
        (genera el ticket y luego limpia). El folio se inyecta en #vc-folio. -->
   <div id="modal-venta-completada" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
     <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
-    <div class="relative w-full max-w-md bg-pos-bg rounded-xl shadow-lg p-6 animate-pop-in">
+    <div class="relative w-full max-w-md pos-modal p-6 animate-pop-in">
       <div class="flex flex-col items-center text-center">
         <span class="flex items-center justify-center h-14 w-14 rounded-full bg-pos-success/15 text-pos-success mb-3">
           <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -306,17 +314,7 @@
   <div id="area-impresion" aria-hidden="true"></div>
 
   <!-- JS del layout (solo menú responsive; seguridad/iniciar perfil los maneja guard.js) -->
-  <script>
-    (function () {
-      const menu = document.getElementById('menu-toggle');
-      const sidebar = document.getElementById('sidebar');
-      const overlay = document.getElementById('sidebar-overlay');
-      function closeS() { sidebar?.classList.add('-translate-x-full'); overlay?.classList.add('hidden'); }
-      function openS() { sidebar?.classList.remove('-translate-x-full'); overlay?.classList.remove('hidden'); }
-      menu?.addEventListener('click', () => sidebar?.classList.contains('-translate-x-full') ? openS() : closeS());
-      overlay?.addEventListener('click', closeS);
-    })();
-  </script>
+  <script src="./services/sidebar.js"></script>
 
   <!-- Seguridad: backend local JWT (sin Supabase) -->
   <script src="./services/config.js"></script>

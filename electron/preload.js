@@ -2,21 +2,14 @@
  * preload.js — Puente seguro entre el renderer web y el proceso principal.
  *
  * Se ejecuta en el contexto del renderer (cargado desde http://127.0.0.1:8000),
- * con `contextIsolation` habilitado. Expone SOLO una superficie mínima y
- * explícita al frontend (nada de Node/Electron crudo), describiendo el estado
- * del backend embebido e IPC para peticiones controladas del lado principal.
+ * con `contextIsolation` habilitado. Expone SOLO una superficie mínima y de
+ * lectura (nada de Node/Electron crudo): el estado del backend embebido y el
+ * aviso de que quedó listo.
  *
- * No se altera ningún flujo previo: se agrega únicamente `window.posApp` para
- * que la UI (si lo desea) pueda consultar si el servidor embebido está listo o
- * pedir el cierre/creación del backend sin tocar Node directamente.
+ * Detener o reiniciar el backend NO se expone a propósito: la interfaz no lo
+ * necesita y una página comprometida podría usarlo para tumbar el POS.
  */
 const { contextBridge, ipcRenderer } = require('electron');
-
-const VALID_REQUEST_CHANNELS = [
-  'backend:status',
-  'backend:stop',
-  'backend:restart',
-];
 
 contextBridge.exposeInMainWorld('posApp', {
   // Estado actual del backend embebido.
@@ -29,13 +22,5 @@ contextBridge.exposeInMainWorld('posApp', {
     };
     ipcRenderer.on('backend:ready', listener);
     return () => ipcRenderer.removeListener('backend:ready', listener);
-  },
-
-  // Solicitudes del renderer acotadas a canales permitidos.
-  send: (channel, ...args) => {
-    if (!VALID_REQUEST_CHANNELS.includes(channel)) {
-      return Promise.reject(new Error('Canal no permitido'));
-    }
-    return ipcRenderer.invoke(channel, ...args);
   },
 });

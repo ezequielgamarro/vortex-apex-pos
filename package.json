@@ -13,15 +13,25 @@
     "build:full": "npm run build:css && npm run build:backend",
     "build:installer": "npm run build:full && electron-builder --win",
     "dist": "npm run build:installer",
+    "dist:firmado": "node tools_build/exigir_firma.js && npm run build:installer",
     "dist:dir": "npm run build:full && electron-builder --win --dir",
     "pack": "npm run build:full && electron-builder --win nsis"
   },
   "devDependencies": {
-    "electron": "^31.3.0",
-    "electron-builder": "^24.13.3"
+    "electron": "44.5.1",
+    "electron-builder": "26.17.0"
   },
   "build": {
     "appId": "com.vortex.apex.pos",
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "grantFileProtocolExtraPrivileges": false
+    },
 
     "productName": "Punto de Venta",
     "compression": "normal",

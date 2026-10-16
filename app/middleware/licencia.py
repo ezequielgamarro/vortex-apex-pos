@@ -21,7 +21,13 @@ import logging
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.database import SessionLocal
-from app.services.licencia_service import evaluar, requiere_bloqueo
+from app.services.licencia_service import (
+    HORAS_TOLERANCIA_FALLO,
+    evaluar,
+    fallo_control_excedido,
+    registrar_control_ok,
+    requiere_bloqueo,
+)
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -53,12 +59,19 @@ class LicenciaMiddleware:
             est = evaluar(db, persistir_ping=False)
             bloqueada = est.bloqueada
             mensaje = est.mensaje
+            registrar_control_ok()
         except Exception as exc:  # noqa: BLE001
-            # FALLO ABIERTO (fail-open): si la evaluación falla por un error
-            # inesperado, se PERMITE la operación. Nunca dejamos de vender por
-            # un bug del subsistema de licencia (evita un fallo de negocio).
-            logger.warning("[licencia] No se pudo evaluar; se permite operar: %s", exc)
-            bloqueada = False
+            # FALLO CERRADO CON TOLERANCIA: un error interno del control no corta
+            # la venta de golpe (evita dejar sin vender por un bug), pero si dura
+            # más de HORAS_TOLERANCIA_FALLO se bloquean las escrituras.
+            logger.warning("[licencia] No se pudo evaluar la licencia: %s", exc)
+            bloqueada = fallo_control_excedido()
+            if bloqueada:
+                mensaje = (
+                    "No se pudo verificar la licencia hace más de "
+                    f"{HORAS_TOLERANCIA_FALLO} horas. Contactá a tu proveedor. "
+                    "Tus datos están a salvo."
+                )
         finally:
             db.close()
 

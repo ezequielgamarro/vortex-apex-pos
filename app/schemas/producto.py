@@ -27,15 +27,15 @@ class ProductoBase(BaseModel):
     codigo_barras: Optional[str] = Field(
         None, max_length=50, description="Código de barras / SKU"
     )
-    precio: Decimal = Field(..., gt=0, description="Precio de venta")
-    costo: Optional[Decimal] = Field(None, ge=0, description="Costo unitario")
+    precio: Decimal = Field(..., gt=0, le=999_999_999, description="Precio de venta")
+    costo: Optional[Decimal] = Field(None, ge=0, le=999_999_999, description="Costo unitario")
     porcentaje_ganancia: Optional[Decimal] = Field(
         None, ge=0, le=1000, description="Margen de ganancia objetivo (%)"
     )
     # Decimal (no int) para que en 'peso' el stock admita fracciones de kg.
-    stock: Decimal = Field(Decimal("0"), ge=0, description="Cantidad en stock")
+    stock: Decimal = Field(Decimal("0"), ge=0, le=999_999_999, description="Cantidad en stock")
     stock_minimo: Decimal = Field(
-        Decimal("0"), ge=0, description="Stock mínimo para alerta"
+        Decimal("0"), ge=0, le=999_999_999, description="Stock mínimo para alerta"
     )
     categoria: Optional[str] = Field(
         None, max_length=100, description="Categoría del producto"
@@ -83,11 +83,11 @@ class ProductoUpdate(BaseModel):
     nombre: Optional[str] = Field(None, min_length=1, max_length=200)
     descripcion: Optional[str] = Field(None, max_length=500)
     codigo_barras: Optional[str] = Field(None, max_length=50)
-    precio: Optional[Decimal] = Field(None, gt=0)
-    costo: Optional[Decimal] = Field(None, ge=0)
+    precio: Optional[Decimal] = Field(None, gt=0, le=999_999_999)
+    costo: Optional[Decimal] = Field(None, ge=0, le=999_999_999)
     porcentaje_ganancia: Optional[Decimal] = Field(None, ge=0, le=1000)
-    stock: Optional[Decimal] = Field(None, ge=0)
-    stock_minimo: Optional[Decimal] = Field(None, ge=0)
+    stock: Optional[Decimal] = Field(None, ge=0, le=999_999_999)
+    stock_minimo: Optional[Decimal] = Field(None, ge=0, le=999_999_999)
     categoria: Optional[str] = Field(None, max_length=100)
     marca: Optional[str] = Field(None, max_length=80)
     talle: Optional[str] = Field(None, max_length=40)

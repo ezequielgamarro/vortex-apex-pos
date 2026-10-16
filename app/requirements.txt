@@ -17,11 +17,14 @@ pydantic-settings==2.15.0
 python-multipart==0.0.32
 
 # Seguridad (JWT local + hashing de contraseñas)
-python-jose==3.5.0
+PyJWT==2.15.1
 bcrypt==5.0.0
 
 # Licencias firmadas (Ed25519) — firma y verificación offline
 cryptography==50.0.1
+
+# Migraciones de esquema versionadas
+alembic==1.20.0
 
 # Utilidades
 python-dotenv==1.2.3

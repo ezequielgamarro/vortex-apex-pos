@@ -1,0 +1,7 @@
+# Dependencias para correr las pruebas y construir el .exe (no van en el instalador).
+#   python -m venv app/.venv
+#   app/.venv/Scripts/pip install -r app/requirements-dev.txt
+#   app/.venv/Scripts/python -m pytest tests -q
+-r requirements.txt
+pytest==9.1.1
+pyinstaller>=6.0

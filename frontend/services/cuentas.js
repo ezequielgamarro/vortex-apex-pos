@@ -9,7 +9,7 @@
  * Depende de api.js (authFetch) y guard.js (protección de la ruta).
  */
 import { api } from './api.js';
-import { mostrarAlerta } from './ui.js';
+import { mostrarAlerta, esc } from './ui.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -43,7 +43,7 @@ function renderTabla() {
   const tbody = $('tabla-clientes');
   tbody.innerHTML = '';
   if (!clientes.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-pos-text-body/60 py-8">No hay clientes registrados.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-pos-text-body/70 py-8">No hay clientes registrados.</td></tr>';
     return;
   }
   clientes.forEach((c) => {
@@ -55,8 +55,8 @@ function renderTabla() {
     tr.dataset.nombre = (c.nombre || '').toLowerCase();
     tr.dataset.telefono = (c.telefono || '').toLowerCase();
     tr.innerHTML = `
-      <td class="font-medium text-pos-text-head">${c.nombre}</td>
-      <td>${c.telefono || '—'}</td>
+      <td class="font-medium text-pos-text-head">${esc(c.nombre)}</td>
+      <td>${esc(c.telefono || '—')}</td>
       <td class="text-right">
         <span class="badge ${badgeSaldo}">${money(saldo)}</span>
       </td>
@@ -107,7 +107,7 @@ function actualizarAvisoSinResultados(q, visibles) {
   if (debeMostrar && !aviso) {
     const tr = document.createElement('tr');
     tr.dataset.sinResultados = '1';
-    tr.innerHTML = `<td colspan="4" class="text-center text-pos-text-body/60 py-8">Sin coincidencias para "${q}".</td>`;
+    tr.innerHTML = `<td colspan="4" class="text-center text-pos-text-body/70 py-8">Sin coincidencias para "${esc(q)}".</td>`;
     tbody.appendChild(tr);
   } else if (!debeMostrar && aviso) {
     aviso.remove();
@@ -122,7 +122,7 @@ async function cargar() {
     renderTabla();
   } catch (e) {
     $('tabla-clientes').innerHTML =
-      `<tr><td colspan="4" class="text-center text-pos-danger py-8">No se pudieron cargar los clientes: ${e.message}</td></tr>`;
+      `<tr><td colspan="4" class="text-center text-pos-danger py-8">No se pudieron cargar los clientes: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -163,10 +163,10 @@ async function verDetalle(id) {
     const cont = $('detalle-movimientos');
     const movs = (Array.isArray(c.movimientos) ? c.movimientos : []).slice();
     if (!movs.length) {
-      cont.innerHTML = '<p class="text-sm text-pos-text-body/60">Sin movimientos.</p>';
+      cont.innerHTML = '<p class="text-sm text-pos-text-body/70">Sin movimientos.</p>';
     } else {
       cont.innerHTML =
-        '<div class="flex items-center justify-between text-xs text-pos-text-body/60 font-semibold uppercase pb-2 border-b border-pos-secondary/30">' +
+        '<div class="flex items-center justify-between text-xs text-pos-text-body/70 font-semibold uppercase pb-2 border-b border-pos-secondary/30">' +
         '<span>Fecha</span><span>Tipo</span><span>Monto</span>' +
         '</div>';
       movs.forEach((m) => {

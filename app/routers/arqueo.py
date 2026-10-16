@@ -25,6 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
+from app.errors import detalle_error_interno
 from app.database import get_db
 from app.dependencies import get_current_user, UsuarioActual
 from app.models import Arqueo, ArqueoMovimiento, Venta, now_utc
@@ -45,9 +46,39 @@ METODOS_EFECTIVO = {"efectivo"}
 # ------------------------------------------------------------------
 # Helpers internos
 # ------------------------------------------------------------------
-def _obtener_caja_activa(db: Session) -> Arqueo:
-    """Obtiene la caja abierta vigente. Lanza 409 si no hay ninguna."""
-    caja = db.query(Arqueo).filter(Arqueo.estado == "abierto").first()
+def caja_abierta_de(db: Session, usuario_id: int | None) -> Arqueo | None:
+    """Caja abierta del usuario dado, o None si no tiene.
+
+    Cada usuario tiene su propia caja. Compatibilidad: una caja que quedó
+    abierta de una versión anterior (sin dueño) la puede usar cualquiera hasta
+    que se cierre, para no dejar sin caja a un turno en curso al actualizar.
+    """
+    caja = (
+        db.query(Arqueo)
+        .filter(Arqueo.estado == "abierto", Arqueo.usuario_id == usuario_id)
+        .first()
+    )
+    if caja is None:
+        caja = (
+            db.query(Arqueo)
+            .filter(Arqueo.estado == "abierto", Arqueo.usuario_id.is_(None))
+            .first()
+        )
+    return caja
+
+
+def _es_admin(usuario: UsuarioActual) -> bool:
+    return usuario.rol == "admin"
+
+
+def _puede_ver(caja: Arqueo, usuario: UsuarioActual) -> bool:
+    """El administrador ve todas las cajas; un cajero solo las suyas."""
+    return _es_admin(usuario) or caja.usuario_id == usuario.id
+
+
+def _obtener_caja_activa(db: Session, usuario: UsuarioActual) -> Arqueo:
+    """Obtiene la caja abierta del usuario. Lanza 409 si no tiene ninguna."""
+    caja = caja_abierta_de(db, usuario.id)
     if caja is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -81,6 +112,10 @@ def _calcular_totales(db: Session, caja: Arqueo) -> dict:
         Venta.fecha >= caja.fecha_apertura,
         Venta.estado != "anulada",
     ]
+    # Cada caja suma SOLO las ventas de su dueño. Una caja sin dueño (abierta
+    # antes de esta versión) conserva el criterio anterior: todas las del turno.
+    if caja.usuario_id is not None:
+        condiciones_ventas.append(Venta.usuario_id == caja.usuario_id)
 
     # Si la caja está cerrada, acotar la ventana por el cierre: las ventas
     # registradas DESPUÉS de su fecha_cierre pertenecen a turnos siguientes.
@@ -150,17 +185,19 @@ def abrir_caja(
 ):
     """Abre la caja registradora con el monto inicial en efectivo.
 
-    Rechaza la operación si ya existe una caja abierta.
+    Rechaza la operación si el usuario ya tiene una caja abierta. La caja queda
+    a nombre de quien la abre.
     """
     try:
-        ya_abierta = db.query(Arqueo).filter(Arqueo.estado == "abierto").first()
+        ya_abierta = caja_abierta_de(db, usuario.id)
         if ya_abierta is not None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Ya existe una caja abierta. Ciérrala antes de abrir una nueva.",
+                detail="Ya tienes una caja abierta. Ciérrala antes de abrir una nueva.",
             )
 
         nueva = Arqueo(
+            usuario_id=usuario.id,
             monto_inicial=apertura.monto_inicial,
             estado="abierto",
             observaciones_apertura=apertura.observaciones,
@@ -175,7 +212,7 @@ def abrir_caja(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al abrir caja: {str(exc)}",
+            detail=detalle_error_interno("Error al abrir caja", exc),
         )
 
 
@@ -195,7 +232,7 @@ def registrar_movimiento(
 ):
     """Registra una entrada (ingreso) o salida (egreso) manual en la caja activa."""
     try:
-        caja = _obtener_caja_activa(db)
+        caja = _obtener_caja_activa(db, usuario)
         nuevo = ArqueoMovimiento(
             arqueo_id=caja.id,
             tipo=movimiento.tipo,
@@ -213,7 +250,7 @@ def registrar_movimiento(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al registrar movimiento: {str(exc)}",
+            detail=detalle_error_interno("Error al registrar movimiento", exc),
         )
 
 
@@ -239,7 +276,7 @@ def cerrar_caja(
     y guarda la diferencia (sobrante/socotro).
     """
     try:
-        caja = _obtener_caja_activa(db)
+        caja = _obtener_caja_activa(db, usuario)
 
         monto_inicial = Decimal(caja.monto_inicial or 0)
         totales = _calcular_totales(db, caja)
@@ -290,7 +327,7 @@ def cerrar_caja(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al cerrar caja: {str(exc)}",
+            detail=detalle_error_interno("Error al cerrar caja", exc),
         )
 
 
@@ -308,11 +345,11 @@ def caja_activa(
 ):
     """Devuelve la caja actualmente abierta, o null si no hay ninguna."""
     try:
-        return db.query(Arqueo).filter(Arqueo.estado == "abierto").first()
+        return caja_abierta_de(db, usuario.id)
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al consultar caja activa: {str(exc)}",
+            detail=detalle_error_interno("Error al consultar caja activa", exc),
         )
 
 
@@ -393,7 +430,7 @@ def resumen_caja(
     movimientos y desglose de las ventas del turno.
     """
     try:
-        caja = _obtener_caja_activa(db)
+        caja = _obtener_caja_activa(db, usuario)
         totales = _calcular_totales(db, caja)
         return _serializar_resumen(caja, totales)
     except HTTPException:
@@ -401,7 +438,7 @@ def resumen_caja(
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al consultar resumen: {str(exc)}",
+            detail=detalle_error_interno("Error al consultar resumen", exc),
         )
 
 
@@ -426,7 +463,8 @@ def resumen_arqueo_por_id(
     """
     try:
         caja = db.query(Arqueo).filter(Arqueo.id == arqueo_id).first()
-        if caja is None:
+        # Un cajero no ve cajas ajenas: se responde igual que si no existiera.
+        if caja is None or not _puede_ver(caja, usuario):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Arqueo no encontrado.",
@@ -440,7 +478,7 @@ def resumen_arqueo_por_id(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al consultar el resumen del arqueo: {str(exc)}",
+            detail=detalle_error_interno("Error al consultar el resumen del arqueo", exc),
         )
 
 
@@ -457,15 +495,12 @@ def historial_arqueos(
     """Devuelve los arqueos ya cerrados, ordenados del más reciente al más antiguo."""
     try:
         limite = max(1, min(limite, 200))
-        return (
-            db.query(Arqueo)
-            .filter(Arqueo.estado == "cerrado")
-            .order_by(Arqueo.fecha_cierre.desc())
-            .limit(limite)
-            .all()
-        )
+        consulta = db.query(Arqueo).filter(Arqueo.estado == "cerrado")
+        if not _es_admin(usuario):
+            consulta = consulta.filter(Arqueo.usuario_id == usuario.id)
+        return consulta.order_by(Arqueo.fecha_cierre.desc()).limit(limite).all()
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al consultar historial: {str(exc)}",
+            detail=detalle_error_interno("Error al consultar historial", exc),
         )

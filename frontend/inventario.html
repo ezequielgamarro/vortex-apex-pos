@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventario | Punto de Venta</title>
+  <link rel="icon" type="image/png" href="./assets/favicon.png">
   <link href="./dist/css/app.css" rel="stylesheet" type="text/css">
   <!-- Anti-FOUC: aplica el tema ANTES del render (evita el flash blanco). -->
   <script src="./services/theme.js"></script>
@@ -11,15 +12,15 @@
 <body class="flex">
 
   <!-- ============================ SIDEBAR ============================ -->
-  <aside id="sidebar" class="fixed z-40 inset-y-0 left-0 w-64 bg-pos-bg border-r border-pos-secondary/60 transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:static" aria-label="Navegación principal">
-        <div class="flex flex-col h-full">
-            <a href="inventario.html" class="flex items-center justify-center px-6 h-20 border-b border-pos-secondary/60">
-        <img src="./assets/vortex apex logo modo claro dentro del programa.webp" alt="VORTEX APEX" class="block w-full max-w-[14rem] h-auto dark:hidden">
-          <img src="./assets/vortex apex logo modo oscuro dentro del programa.webp" alt="VORTEX APEX" class="hidden w-full max-w-[14rem] h-auto dark:block">
+  <aside id="sidebar" class="rail fixed z-40 inset-y-0 left-0 w-64 transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:self-start shrink-0" aria-label="Navegación principal">
+    <div class="flex flex-col h-full">
+      <a href="pos.html" class="flex items-center px-6 h-16 shrink-0" aria-label="Vortex Apex, ir al inicio">
+        <img src="./assets/vx-wordmark-sobre-claro.webp" alt="VORTEX APEX" width="1000" height="78" class="block dark:hidden w-full max-w-[11.5rem] h-auto">
+        <img src="./assets/vx-wordmark-sobre-oscuro.webp" alt="VORTEX APEX" width="1000" height="82" class="hidden dark:block w-full max-w-[11.5rem] h-auto">
       </a>
       <!-- El menú lateral es renderizado dinámicamente por guard.js (renderSidebar).
            Single Source of Truth: no incluir enlaces estáticos aquí. -->
-      <nav id="sidebar-menu" class="flex-1 overflow-y-auto p-4 space-y-1"></nav>
+      <nav id="sidebar-menu" class="flex-1 overflow-y-auto px-3 pb-4 pt-3 space-y-1" aria-label="Secciones"></nav>
     </div>
   </aside>
   <div id="sidebar-overlay" class="fixed inset-0 z-30 bg-pos-overlay/50 backdrop-blur-sm lg:hidden hidden"></div>
@@ -28,12 +29,12 @@
   <div class="flex flex-col flex-1 min-w-0">
 
     <!-- Header -->
-    <header class="sticky top-0 z-20 flex items-center gap-4 px-4 sm:px-6 h-16 bg-pos-bg border-b border-pos-secondary/60">
-      <button id="menu-toggle" class="p-2 -ml-2 rounded-lg text-pos-text-head hover:bg-pos-secondary/40 lg:hidden" type="button" aria-label="Abrir menú">
+    <header class="sticky top-0 z-20 flex items-center gap-4 px-4 sm:px-6 h-16 bg-pos-card border-b border-pos-secondary/70">
+      <button id="menu-toggle" class="icon-btn -ml-2 lg:hidden" type="button" aria-label="Abrir menú">
         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
-      <h4 class="text-lg font-semibold text-pos-text-head">Inventario</h4>
-      <button class="ml-auto flex items-center gap-2 p-1.5 rounded-lg hover:bg-pos-secondary/40" type="button">
+      <h4 class="font-marca text-base font-semibold text-pos-text-head">Inventario</h4>
+      <button class="ml-auto flex items-center gap-2 p-1.5 rounded-xl hover:bg-pos-secondary/50 transition-colors" type="button">
         <span class="flex items-center justify-center h-8 w-8 rounded-full bg-pos-primary text-pos-primary-text text-sm font-semibold" id="profile-initial">U</span>
         <span class="hidden sm:block text-sm font-medium text-pos-text-body" id="profile-name">Usuario</span>
         <span id="profile-rol"></span>
@@ -65,12 +66,32 @@
         </div>
       </div>
 
+      <!-- Resumen del catálogo: las tarjetas también filtran la tabla -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3" id="resumen-inventario">
+        <button type="button" data-filtro-estado="" class="resumen-card pos-card p-4 text-left" aria-pressed="true">
+          <span class="text-xs font-semibold uppercase tracking-wider text-pos-text-body/70">Productos</span>
+          <span id="res-total" class="mt-1 block text-2xl font-bold text-pos-text-head">—</span>
+        </button>
+        <button type="button" data-filtro-estado="bajo" class="resumen-card pos-card p-4 text-left" aria-pressed="false">
+          <span class="text-xs font-semibold uppercase tracking-wider text-pos-text-body/70">Stock bajo</span>
+          <span id="res-bajo" class="mt-1 block text-2xl font-bold text-pos-warning">—</span>
+        </button>
+        <button type="button" data-filtro-estado="agotado" class="resumen-card pos-card p-4 text-left" aria-pressed="false">
+          <span class="text-xs font-semibold uppercase tracking-wider text-pos-text-body/70">Agotados</span>
+          <span id="res-agotado" class="mt-1 block text-2xl font-bold text-pos-danger">—</span>
+        </button>
+        <div id="res-valor-card" class="pos-card p-4 hidden">
+          <span class="text-xs font-semibold uppercase tracking-wider text-pos-text-body/70">Valor a costo</span>
+          <span id="res-valor" class="mt-1 block text-2xl font-bold text-pos-text-head">—</span>
+        </div>
+      </div>
+
       <!-- Toolbar: filtros + orden + búsqueda reutilizando la API (backend) -->
       <div class="pos-card p-4">
         <div class="flex items-center gap-3 flex-wrap">
           <!-- Buscador en vivo (nombre o código de barras), client-side -->
           <div class="relative flex-1 min-w-[12rem]">
-            <span class="absolute inset-y-0 left-3 flex items-center text-pos-text-body/60">
+            <span class="absolute inset-y-0 left-3 flex items-center text-pos-text-body/70">
               <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </span>
             <input id="buscar-producto" type="text" class="form-input-pos pl-10" placeholder="Buscar por nombre o código de barras...">
@@ -117,7 +138,7 @@
 
       <!-- Filtros específicos de Indumentaria (ocultos por defecto, JS los muestra) -->
       <div id="filtros-indumentaria" class="hidden flex flex-wrap items-center gap-3 px-4 pb-3 border-b border-pos-secondary/30">
-        <span class="text-xs font-semibold text-pos-text-body/60 uppercase tracking-wider">Filtros ropa:</span>
+        <span class="text-xs font-semibold text-pos-text-body/70 uppercase tracking-wider">Filtros ropa:</span>
         <input id="filtro-marca" type="text" class="form-input-pos !w-auto !py-1.5 text-sm" placeholder="Marca…">
         <input id="filtro-talle" type="text" class="form-input-pos !w-auto !py-1.5 text-sm" placeholder="Talle…">
         <input id="filtro-color" type="text" class="form-input-pos !w-auto !py-1.5 text-sm" placeholder="Color…">
@@ -127,7 +148,7 @@
       <!-- Tabla de productos -->
       <div class="pos-card overflow-hidden">
         <div class="pos-table-wrap">
-          <table class="pos-table">
+          <table class="pos-table pos-table-densa">
             <thead>
               <tr>
                 <th>Código</th>
@@ -140,14 +161,14 @@
               </tr>
             </thead>
             <tbody id="tabla-productos">
-              <tr><td colspan="7" class="text-center text-pos-text-body/60 py-8">Cargando productos...</td></tr>
+              <tr><td colspan="7" class="text-center text-pos-text-body/70 py-8">Cargando productos...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
 
       <!-- Indicador de permisos para cajero -->
-      <p id="aviso-admin" class="hidden text-sm text-pos-text-body/60">
+      <p id="aviso-admin" class="hidden text-sm text-pos-text-body/70">
         <span class="badge badge-neutral mr-1">Info</span> Solo los administradores pueden crear, editar o eliminar productos.
       </p>
 
@@ -157,10 +178,10 @@
   <!-- ===================== MODAL CREAR/EDITAR PRODUCTO ===================== -->
   <div id="modal-producto" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
     <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
-    <div class="relative w-full max-w-lg bg-pos-bg rounded-xl shadow-lg p-6 max-h-[90vh] overflow-y-auto">
+    <div class="relative w-full max-w-lg pos-modal px-6 pt-6 pb-0 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-5">
         <h4 class="text-lg font-semibold text-pos-text-head" id="modal-producto-titulo">Nuevo producto</h4>
-        <button type="button" class="text-pos-text-body/60 hover:text-pos-text-head" data-close>
+        <button type="button" class="text-pos-text-body/70 hover:text-pos-text-head" data-close>
           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
@@ -173,7 +194,8 @@
         <div class="grid grid-cols-2 gap-4">
                     <div>
             <label class="form-label" for="prod-codigo">Código de barras</label>
-            <input id="prod-codigo" type="text" class="form-input-pos" placeholder="SKU">
+            <input id="prod-codigo" type="text" class="form-input-pos" placeholder="Escaneá o escribí el código" autocomplete="off">
+            <p id="prod-codigo-aviso" class="hidden mt-1 text-xs font-medium text-pos-warning" role="status"></p>
           </div>
           <div>
             <label class="form-label" for="prod-categoria">Categoría</label>
@@ -191,7 +213,7 @@
           <div>
             <label class="form-label" for="prod-costo">Costo ($)</label>
             <div class="relative">
-              <span class="absolute inset-y-0 left-3 flex items-center text-pos-text-body/60 text-sm">$</span>
+              <span class="absolute inset-y-0 left-3 flex items-center text-pos-text-body/70 text-sm">$</span>
               <input id="prod-costo" type="number" step="0.01" min="0" class="form-input-pos pl-8">
             </div>
           </div>
@@ -199,18 +221,18 @@
             <label class="form-label" for="prod-margen">Margen %</label>
             <div class="relative">
               <input id="prod-margen" type="number" step="any" min="0" class="form-input-pos pr-8" placeholder="Ej. 50">
-              <span class="absolute inset-y-0 right-3 flex items-center text-pos-text-body/60 text-sm">%</span>
+              <span class="absolute inset-y-0 right-3 flex items-center text-pos-text-body/70 text-sm">%</span>
             </div>
           </div>
           <div>
             <label class="form-label" for="prod-precio">Precio de venta ($)</label>
             <div class="relative">
-              <span class="absolute inset-y-0 left-3 flex items-center text-pos-text-body/60 text-sm">$</span>
+              <span class="absolute inset-y-0 left-3 flex items-center text-pos-text-body/70 text-sm">$</span>
               <input id="prod-precio" type="number" step="0.01" min="0" class="form-input-pos pl-8" required>
             </div>
           </div>
         </div>
-        <p id="sugerencia-precio" class="text-xs text-pos-text-body/60">
+        <p id="sugerencia-precio" class="text-xs text-pos-text-body/70">
           El precio se auto-calcula con Costo + Margen %. Podés redondearlo o corregirlo manualmente.
         </p>
         <div class="grid grid-cols-2 gap-4">
@@ -233,7 +255,7 @@
             <option value="litros">Litros (por litro / importe $)</option>
             <option value="servicio">Servicio / Copia (librería)</option>
           </select>
-          <p class="text-xs text-pos-text-body/60 mt-1">Para 'Peso', 'Metros' y 'Litros' el stock se mide en su unidad y permite vender por importe ($).</p>
+          <p class="text-xs text-pos-text-body/70 mt-1">Para 'Peso', 'Metros' y 'Litros' el stock se mide en su unidad y permite vender por importe ($).</p>
         </div>
 
         <!-- ============ Campos multi-rubro (Módulo 1): visibles según el rubro ============ -->
@@ -258,7 +280,7 @@
         <div class="hidden" data-rubro="vencimiento">
           <label class="form-label" for="prod-vencimiento">Fecha de vencimiento</label>
           <input id="prod-vencimiento" type="date" class="form-input-pos">
-          <p class="text-xs text-pos-text-body/60 mt-1">Para panadería/alimentos: se alerta cuando está por vencer o vencido.</p>
+          <p class="text-xs text-pos-text-body/70 mt-1">Para panadería/alimentos: se alerta cuando está por vencer o vencido.</p>
         </div>
         <!-- data-rubro="libreria": variantes de impresión (solo si la unidad es Servicio/Copia). -->
         <div id="prod-variantes-impresion" class="hidden" data-rubro="libreria">
@@ -280,7 +302,7 @@
               </select>
             </div>
           </div>
-          <p class="text-xs text-pos-text-body/60 mt-1">Variantes por defecto de las copias/impresiones. El cajero puede ajustarlas al vender (si se habilita por línea).</p>
+          <p class="text-xs text-pos-text-body/70 mt-1">Variantes por defecto de las copias/impresiones. El cajero puede ajustarlas al vender (si se habilita por línea).</p>
         </div>
 
         <div>
@@ -291,7 +313,7 @@
           <input id="prod-activo" type="checkbox" class="rounded border-pos-secondary/70 text-pos-primary focus:ring-pos-primary/40" checked>
           <span>Activo</span>
         </label>
-        <div class="flex justify-end gap-3 mt-6">
+        <div class="sticky bottom-0 -mx-6 mt-6 px-6 py-4 flex justify-end gap-3 bg-pos-card border-t border-pos-secondary/70 rounded-b-2xl">
           <button type="button" class="btn-secondary" data-close>Cancelar</button>
           <button type="submit" class="btn-primary">Guardar</button>
         </div>
@@ -302,13 +324,13 @@
     <!-- ===================== MODAL: NUEVA CATEGORÍA ===================== -->
   <div id="modal-nueva-categoria" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
     <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
-    <div class="relative w-full max-w-sm bg-pos-bg rounded-xl shadow-lg p-6">
+    <div class="relative w-full max-w-sm pos-modal p-6">
       <div class="flex items-center justify-between mb-4">
         <div>
           <h4 class="text-lg font-semibold text-pos-text-head">Nueva categoría</h4>
-          <p class="text-xs text-pos-text-body/60">Quedará disponible para asignar a productos.</p>
+          <p class="text-xs text-pos-text-body/70">Quedará disponible para asignar a productos.</p>
         </div>
-        <button type="button" id="btn-categoria-cerrar" class="text-pos-text-body/60 hover:text-pos-text-head" aria-label="Cerrar">
+        <button type="button" id="btn-categoria-cerrar" class="text-pos-text-body/70 hover:text-pos-text-head" aria-label="Cerrar">
           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
@@ -328,7 +350,7 @@
   <!-- ===================== MODAL ELIMINAR ===================== -->
   <div id="modal-eliminar" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
     <div class="absolute inset-0 bg-pos-overlay/50 backdrop-blur-sm"></div>
-    <div class="relative w-full max-w-md bg-pos-bg rounded-xl shadow-lg p-6">
+    <div class="relative w-full max-w-md pos-modal p-6">
       <h4 class="text-lg font-semibold text-pos-text-head mb-2">¿Eliminar producto?</h4>
       <p class="text-sm text-pos-text-body mb-6">Se eliminará definitivamente del catálogo. Esta acción no se puede deshacer.</p>
       <div class="flex justify-end gap-3">
@@ -339,24 +361,8 @@
   </div>
 
   <!-- JS del layout (menú responsive + cierre de modales) -->
-  <script>
-    (function () {
-      const menu = document.getElementById('menu-toggle');
-      const sidebar = document.getElementById('sidebar');
-      const overlay = document.getElementById('sidebar-overlay');
-      function closeS() { sidebar?.classList.add('-translate-x-full'); overlay?.classList.add('hidden'); }
-      function openS() { sidebar?.classList.remove('-translate-x-full'); overlay?.classList.remove('hidden'); }
-      menu?.addEventListener('click', () => sidebar?.classList.contains('-translate-x-full') ? openS() : closeS());
-      overlay?.addEventListener('click', closeS);
-      // Cierre genérico de modales
-      document.addEventListener('click', (e) => {
-        if (e.target.closest('[data-close]')) {
-          e.target.closest('[id^="modal"]').classList.add('hidden');
-          e.target.closest('[id^="modal"]').classList.remove('flex');
-        }
-      });
-    })();
-  </script>
+  <script src="./services/sidebar.js"></script>
+  <script src="./services/modal-close.js"></script>
 
   <!-- Seguridad: backend local JWT (sin Supabase) -->
   <script src="./services/config.js"></script>

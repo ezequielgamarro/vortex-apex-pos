@@ -33,13 +33,21 @@ module.exports = {
         'pos-success':    'rgb(var(--pos-success) / <alpha-value>)',
         // Overlay/backdrop de modales y sidebar (permanece oscuro en ambos temas).
         'pos-overlay':    'rgb(var(--pos-overlay) / <alpha-value>)',
+        'pos-brand':      'rgb(var(--pos-brand) / <alpha-value>)',
+        'pos-on-brand':   'rgb(var(--pos-on-brand) / <alpha-value>)',
+        'pos-card':       'rgb(var(--pos-card) / <alpha-value>)',
+        'pos-input':      'rgb(var(--pos-input) / <alpha-value>)',
+        'pos-warning':    'rgb(var(--pos-warning) / <alpha-value>)',
+        'pos-rail':       'rgb(var(--pos-rail) / <alpha-value>)',
+        'pos-rail-text':  'rgb(var(--pos-rail-text) / <alpha-value>)',
       },
       fontFamily: {
-        base: ['"Jost"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        base: ['"Onest"', 'ui-sans-serif', 'system-ui', 'Segoe UI', 'sans-serif'],
+        marca: ['"Unbounded"', '"Onest"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        'pos-card': '0 1px 3px 0 rgba(43,44,52,0.10), 0 1px 2px -1px rgba(43,44,52,0.10)',
-        'pos-primary': '0 10px 15px -3px rgba(98,70,234,0.35), 0 4px 6px -4px rgba(98,70,234,0.35)',
+        'pos-card': '0 1px 2px rgb(var(--pos-shadow) / 0.05), 0 8px 24px -12px rgb(var(--pos-shadow) / var(--pos-shadow-a))',
+        'pos-primary': '0 10px 24px -10px rgb(0 0 0 / 0.4)',
       },
       // Animaciones utilitarias del design system (usadas por el modal
       // "Venta Completada" y los toasts de ui.js/pos.js). Definirlas aquí las

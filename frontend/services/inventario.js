@@ -7,7 +7,8 @@
  *   - Módulo 2 (Excel): exportar/importar catálogo .xlsx (botones del HTML).
  */
 import { api } from './api.js';
-import { mostrarAlerta } from './ui.js';
+import { mostrarAlerta, esc } from './ui.js';
+import { instalarLector, normalizarCodigo } from './lector.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -30,6 +31,7 @@ function normalizarProducto(p) {
 }
 
 let productos = [];
+let catalogoCompleto = [];      // sin filtros: alimenta las tarjetas de resumen
 let rolActual = 'cajero';
 let categorias = [];            // lista maestra de categorías (para select)
 let ordenCol = 'nombre';
@@ -202,9 +204,11 @@ function toggleModales() {
   const esAdminFlag = esAdmin();
   const btnNuevo = $('btn-nuevo');
   if (btnNuevo) btnNuevo.style.display = esAdminFlag ? 'inline-flex' : 'none';
-  // Importar Excel: solo admin. Exportar: cualquier usuario.
+  // Importar y exportar Excel: solo admin (la planilla trae costo y margen).
   const btnImportar = $('btn-importar');
   if (btnImportar) btnImportar.style.display = esAdminFlag ? 'inline-flex' : 'none';
+  const btnExportar = $('btn-exportar');
+  if (btnExportar) btnExportar.style.display = esAdminFlag ? 'inline-flex' : 'none';
   document.getElementById('aviso-admin')?.classList.toggle('hidden', esAdminFlag);
 }
 
@@ -240,12 +244,12 @@ async function rellenarSelectsCategoria(valor = '') {
     fCat.innerHTML =
       '<option value="">Todas</option>' +
       categorias
-        .map((c) => `<option value="${c.nombre}">${c.nombre}</option>`)
+        .map((c) => `<option value="${esc(c.nombre)}">${esc(c.nombre)}</option>`)
         .join('') +
       (Array.isArray(productos)
         ? [...new Set(productos.map((p) => p.categoria).filter(Boolean))]
             .filter((n) => !categorias.some((c) => c.nombre === n))
-            .map((n) => `<option value="${n}">${n}</option>`)
+            .map((n) => `<option value="${esc(n)}">${esc(n)}</option>`)
             .join('')
         : '');
     if ([...fCat.options].some((o) => o.value === actual)) fCat.value = actual;
@@ -256,7 +260,7 @@ async function rellenarSelectsCategoria(valor = '') {
     const actual = pCat.value;
     pCat.innerHTML =
       '<option value="">Sin categoría</option>' +
-      categorias.map((c) => `<option value="${c.nombre}">${c.nombre}</option>`).join('');
+      categorias.map((c) => `<option value="${esc(c.nombre)}">${esc(c.nombre)}</option>`).join('');
     if ([...pCat.options].some((o) => o.value === actual)) pCat.value = actual;
   }
 }
@@ -270,14 +274,14 @@ function renderTabla() {
 
   // Sin productos cargados (catálogo vacío en el backend).
   if (!productos.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-pos-text-body/60 py-8">No hay productos registrados.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-pos-text-body/70 py-8">No hay productos registrados.</td></tr>';
     return;
   }
 
   // Hay catálogo pero la búsqueda no encontró coincidencias.
   if (!visibles.length) {
     const term = terminoBusqueda.trim();
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-pos-text-body/60 py-8">Sin resultados para "${term}".</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-pos-text-body/70 py-8">Sin resultados para "${esc(term)}".</td></tr>`;
     return;
   }
 
@@ -300,14 +304,18 @@ function renderTabla() {
     }
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td class="font-mono text-xs">${p.codigo_barras || '—'}</td>
+      <td class="font-mono text-xs">${esc(p.codigo_barras || '—')}</td>
       <td class="font-medium">
-        ${p.nombre} <span class="badge badge-neutral ml-1 align-middle">${etiquetaTipo}</span>${vencBadge}
+        ${esc(p.nombre)} <span class="badge badge-neutral ml-1 align-middle">${etiquetaTipo}</span>${vencBadge}
       </td>
-      <td>${p.categoria || '—'}</td>
+      <td>${esc(p.categoria || '—')}</td>
       <td>${money(p.precio)}</td>
       <td>
-        <span class="badge ${bajo ? 'badge-danger' : 'badge-neutral'}">${p.stock}</span>
+        <div class="flex items-center gap-1">
+          ${admin ? `<button type="button" data-stock-menos="${p.id}" class="icon-btn !h-7 !w-7" aria-label="Quitar una unidad de ${esc(p.nombre)}" ${p.stock < 1 ? 'disabled' : ''}><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"/></svg></button>` : ''}
+          <span class="badge ${bajo ? 'badge-danger' : 'badge-neutral'} min-w-[2.25rem] justify-center">${p.stock}</span>
+          ${admin ? `<button type="button" data-stock-mas="${p.id}" class="icon-btn !h-7 !w-7" aria-label="Agregar una unidad de ${esc(p.nombre)}"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"/></svg></button>` : ''}
+        </div>
       </td>
       <td>
         <span class="badge ${p.activo ? 'badge-primary' : 'badge-neutral'}">${p.activo ? 'Activo' : 'Inactivo'}</span>
@@ -316,7 +324,7 @@ function renderTabla() {
         <div class="flex justify-end gap-2">
           ${admin ? `
             <button data-editar="${p.id}" class="btn-secondary !px-3 !py-1.5 text-xs">Editar</button>
-            <button data-eliminar="${p.id}" class="btn-danger !px-3 !py-1.5 text-xs">Eliminar</button>
+            <button data-eliminar="${p.id}" class="btn-danger-quiet !px-3 !py-1.5 text-xs">Eliminar</button>
           ` : ''}
         </div>
       </td>`;
@@ -331,7 +339,62 @@ function renderTabla() {
     tbody.querySelectorAll('[data-eliminar]').forEach((b) =>
       b.addEventListener('click', () => confirmarEliminar(b.dataset.eliminar))
     );
+    tbody.querySelectorAll('[data-stock-menos], [data-stock-mas]').forEach((b) =>
+      b.addEventListener('click', () =>
+        ajustarStockRapido(b.dataset.stockMenos ?? b.dataset.stockMas, b.dataset.stockMas !== undefined ? 1 : -1)
+      )
+    );
   }
+}
+
+/** Suma o resta una unidad al stock desde la fila, sin abrir el modal. */
+async function ajustarStockRapido(id, delta) {
+  const p = productos.find((x) => String(x.id) === String(id));
+  if (!p || (delta < 0 && p.stock < 1)) return;
+  try {
+    const res = await api.adjustStock(id, delta);
+    p.stock = Number(res.stock);
+    const enCatalogo = catalogoCompleto.find((x) => String(x.id) === String(id));
+    if (enCatalogo) enCatalogo.stock = p.stock;
+    renderTabla();
+    renderResumen();
+  } catch (e) {
+    mostrarAlerta(e.message || 'No se pudo ajustar el stock.', 'error');
+  }
+}
+
+/** Tarjetas de resumen: conteos del catálogo completo (mismos criterios que el filtro). */
+function renderResumen() {
+  const todos = catalogoCompleto;
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  set('res-total', String(todos.length));
+  set('res-bajo', String(todos.filter((p) => p.stock <= p.stock_minimo).length));
+  set('res-agotado', String(todos.filter((p) => p.stock <= 0).length));
+  const admin = esAdmin();
+  $('res-valor-card')?.classList.toggle('hidden', !admin);
+  if (admin) {
+    set('res-valor', money(todos.filter((p) => p.activo).reduce((s, p) => s + p.costo * p.stock, 0)));
+  }
+  sincronizarTarjetas();
+}
+
+/** Marca como activa la tarjeta que corresponde al filtro de stock elegido. */
+function sincronizarTarjetas() {
+  const actual = $('filtro-estado')?.value || '';
+  document.querySelectorAll('[data-filtro-estado]').forEach((t) =>
+    t.setAttribute('aria-pressed', String(t.dataset.filtroEstado === actual))
+  );
+}
+
+/** Trae el catálogo sin filtros (solo para el resumen). */
+async function cargarResumen() {
+  try {
+    const arr = await api.getProducts('');
+    catalogoCompleto = (Array.isArray(arr) ? arr : []).map(normalizarProducto);
+  } catch (_) {
+    catalogoCompleto = [];
+  }
+  renderResumen();
 }
 
 // ---- Crear / Editar ----
@@ -402,9 +465,9 @@ function abrirModal(titulo = 'Nuevo producto', prod = null) {
   const valCat = prod?.categoria || '';
   $('prod-categoria').innerHTML =
     '<option value="">Sin categoría</option>' +
-    categorias.map((c) => `<option value="${c.nombre}">${c.nombre}</option>`).join('') +
+    categorias.map((c) => `<option value="${esc(c.nombre)}">${esc(c.nombre)}</option>`).join('') +
     (!categorias.some((c) => c.nombre === valCat) && valCat
-      ? `<option value="${valCat}" selected>${valCat}</option>`
+      ? `<option value="${esc(valCat)}" selected>${esc(valCat)}</option>`
       : '');
   $('prod-categoria').value = valCat || '';
 
@@ -412,12 +475,72 @@ function abrirModal(titulo = 'Nuevo producto', prod = null) {
 
   $('modal-producto').classList.remove('hidden');
   $('modal-producto').classList.add('flex');
-  $('prod-nombre').focus();
+  avisarCodigoRepetido();
+  // Alta nueva: el foco va al código para poder pasar el lector de entrada.
+  (prod ? $('prod-nombre') : $('prod-codigo')).focus();
 }
 
 function abrirEdicion(id) {
   const p = productos.find((x) => x.id === id);
   if (p) abrirModal('Editar producto', p);
+}
+
+// ---- Lector de códigos de barras (USB/Bluetooth) ----
+
+/** Producto (de la lista cargada) que ya usa ese código, salvo el que se edita. */
+function productoConCodigo(codigo, excluirId = '') {
+  const c = normalizarCodigo(codigo).toLowerCase();
+  if (!c) return null;
+  return productos.find(
+    (p) => p.codigo_barras && p.codigo_barras.toLowerCase() === c && p.id !== excluirId
+  ) || null;
+}
+
+/** Aviso en vivo bajo el campo de código si ya pertenece a otro producto. */
+function avisarCodigoRepetido() {
+  const aviso = $('prod-codigo-aviso');
+  if (!aviso) return;
+  const otro = productoConCodigo($('prod-codigo').value, $('prod-id').value);
+  aviso.textContent = otro ? `Ese código ya pertenece a "${otro.nombre}".` : '';
+  aviso.classList.toggle('hidden', !otro);
+}
+
+/**
+ * Resuelve un código leído: si el producto existe, el admin abre su edición
+ * (el cajero ve el producto filtrado); si no existe, el admin abre el alta con
+ * el código ya cargado.
+ */
+async function procesarCodigoEscaneado(crudo) {
+  const codigo = normalizarCodigo(crudo);
+  if (!codigo) return;
+  let producto = productoConCodigo(codigo);
+  if (!producto) {
+    try {
+      producto = normalizarProducto(await api.getByBarcode(codigo));
+    } catch {
+      producto = null;
+    }
+  }
+  if (producto) {
+    if (esAdmin()) {
+      abrirModal('Editar producto', producto);
+    } else {
+      const buscador = $('buscar-producto');
+      if (buscador) buscador.value = codigo;
+      terminoBusqueda = codigo;
+      renderTabla();
+    }
+    return;
+  }
+  if (esAdmin()) {
+    abrirModal('Nuevo producto');
+    $('prod-codigo').value = codigo;
+    avisarCodigoRepetido();
+    $('prod-nombre').focus();
+    mostrarAlerta(`Código ${codigo} nuevo: completá los datos del producto.`, 'ok');
+  } else {
+    mostrarAlerta(`El código ${codigo} no está cargado.`, 'warn');
+  }
 }
 
 // ---- Eliminar ----
@@ -472,6 +595,7 @@ async function guardar(e) {
     }
     cerrarModal('modal-producto');
     await cargar();
+    await cargarResumen();
     await rellenarSelectsCategoria();
   } catch (err) {
     mostrarAlerta(`Error al guardar: ${err.message}`, 'error');
@@ -515,6 +639,7 @@ async function eliminar() {
     cerrarModal('modal-eliminar');
     idAEliminar = null;
     await cargar();
+    await cargarResumen();
   } catch (err) {
     mostrarAlerta(`Error al eliminar: ${err.message}`, 'error');
   }
@@ -553,6 +678,7 @@ async function importarExcel(file) {
       res?.omitidos ? 'warn' : 'ok'
     );
     await cargar();
+    await cargarResumen();
     await rellenarSelectsCategoria();
   } catch (err) {
     mostrarAlerta(`No se pudo importar: ${err.message}`, 'error');
@@ -571,10 +697,11 @@ async function cargar() {
     // El backend Pydantic envía Decimales como JSON string → normalizar.
     productos = (Array.isArray(arr) ? arr : []).map(normalizarProducto);
     renderTabla();
+    sincronizarTarjetas();
     await rellenarSelectsCategoria();
   } catch (e) {
     $('tabla-productos').innerHTML =
-      `<tr><td colspan="7" class="text-center text-pos-danger py-8">No se pudieron cargar los productos: ${e.message}</td></tr>`;
+      `<tr><td colspan="7" class="text-center text-pos-danger py-8">No se pudieron cargar los productos: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -641,6 +768,14 @@ async function init() {
       cargar();
     });
   });
+  // Las tarjetas de resumen filtran por estado de stock.
+  document.querySelectorAll('[data-filtro-estado]').forEach((t) =>
+    t.addEventListener('click', () => {
+      const sel = $('filtro-estado');
+      if (sel) sel.value = t.dataset.filtroEstado;
+      cargar();
+    })
+  );
   const bOrden = $('btn-orden-dir');
   if (bOrden) bOrden.addEventListener('click', alternarOrden);
 
@@ -652,7 +787,34 @@ async function init() {
       terminoBusqueda = buscador.value;
       renderTabla();
     });
+    // El lector cierra con Enter: si el texto es un código, se resuelve igual
+    // que una lectura global (editar, o dar de alta si no existe).
+    buscador.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const texto = buscador.value.trim();
+      if (/^\S{4,}$/.test(texto) && productosFiltrados().length === 0) {
+        procesarCodigoEscaneado(texto);
+      } else if (productosFiltrados().length === 1 && productoConCodigo(texto) && esAdmin()) {
+        procesarCodigoEscaneado(texto);
+      }
+    });
   }
+
+  // Campo de código del modal: el Enter del lector no debe enviar el formulario.
+  const campoCodigo = $('prod-codigo');
+  if (campoCodigo) {
+    campoCodigo.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      avisarCodigoRepetido();
+      ($('prod-nombre').value ? $('prod-precio') : $('prod-nombre')).focus();
+    });
+    campoCodigo.addEventListener('input', avisarCodigoRepetido);
+  }
+
+  // Lector USB/Bluetooth con el foco fuera de los campos de texto.
+  instalarLector(procesarCodigoEscaneado);
 
   // Filtros específicos de indumentaria (Marca/Talle/Color): filtrado
   // client-side sobre el catálogo ya cargado. No requieren round-trip al
@@ -684,6 +846,14 @@ async function init() {
   toggleModales();
   aplicarRubroUI();
   await cargar();
+  await cargarResumen();
+
+  // Acceso desde el POS: ?nuevo=<código> abre el alta con el código cargado.
+  const nuevo = normalizarCodigo(new URLSearchParams(location.search).get('nuevo'));
+  if (nuevo) {
+    history.replaceState(null, '', location.pathname);
+    if (esAdmin()) procesarCodigoEscaneado(nuevo);
+  }
 }
 
 init();

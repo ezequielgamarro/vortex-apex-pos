@@ -22,6 +22,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.errors import detalle_error_interno
 from app.database import get_db
 from app.dependencies import get_current_user, UsuarioActual
 from app.models import Arqueo, ArqueoMovimiento, Cliente, MovimientoCuenta, now_utc
@@ -62,7 +63,7 @@ def listar_clientes(
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al listar clientes: {str(exc)}",
+            detail=detalle_error_interno("Error al listar clientes", exc),
         )
 
 
@@ -92,7 +93,7 @@ def obtener_cliente(
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al consultar cliente: {str(exc)}",
+            detail=detalle_error_interno("Error al consultar cliente", exc),
         )
 
 
@@ -129,7 +130,7 @@ def crear_cliente(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al crear el cliente: {str(exc)}",
+            detail=detalle_error_interno("Error al crear el cliente", exc),
         )
 
 
@@ -225,7 +226,7 @@ def registrar_abono(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al registrar el abono: {str(exc)}",
+            detail=detalle_error_interno("Error al registrar el abono", exc),
         )
 
 
@@ -255,5 +256,5 @@ def historial_movimientos(
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al consultar movimientos: {str(exc)}",
+            detail=detalle_error_interno("Error al consultar movimientos", exc),
         )

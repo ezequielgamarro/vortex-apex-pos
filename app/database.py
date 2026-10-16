@@ -8,7 +8,7 @@ externo: toda la persistencia ocurre en un archivo SQLite local.
 import os
 import sys
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -63,6 +63,23 @@ engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False},
 )
+
+
+@event.listens_for(engine, "connect")
+def _configurar_sqlite(dbapi_conn, _record) -> None:
+    """Pragmas de cada conexión nueva.
+
+    - WAL: lectores y escritor no se bloquean entre sí (reportes mientras se
+      vende) y la base resiste mejor un corte de luz a mitad de escritura.
+    - busy_timeout: si la base está ocupada, espera hasta 5 s en vez de fallar
+      al instante con "database is locked".
+    El modo de sincronización queda en su valor por defecto (FULL): cada venta
+    confirmada está en disco.
+    """
+    cur = dbapi_conn.cursor()
+    cur.execute("PRAGMA journal_mode=WAL")
+    cur.execute("PRAGMA busy_timeout=5000")
+    cur.close()
 
 # --- SessionLocal ----------------------------------------------------------
 # `autocommit=False`: las transacciones no se confirman silenciosamente; hay

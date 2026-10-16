@@ -12,6 +12,9 @@
 *.key
 *.pem
 tools_licencia/*.key
+# La llave PÚBLICA de licencias no es secreta y el build la necesita: se versiona.
+# (La privada, tools_licencia/vortex_private.key, y secret.key siguen ignoradas.)
+!app/licencia_public.key
 
 # Python
 __pycache__/

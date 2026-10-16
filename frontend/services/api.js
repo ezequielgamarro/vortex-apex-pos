@@ -140,7 +140,7 @@ export const api = {
   /* ---------- Productos ---------- */
   getProducts: (params = '') => authFetch(`/productos${params}`),
   getProduct: (id) => authFetch(`/productos/${id}`),
-  getByBarcode: (codigo) => authFetch(`/productos/codigo/${codigo}`),
+  getByBarcode: (codigo) => authFetch(`/productos/codigo/${encodeURIComponent(codigo)}`),
   lowStock: () => authFetch('/productos/bajo-stock'),
   createProduct: (data) => authFetch('/productos', { method: 'POST', body: data }),
   updateProduct: (id, data) => authFetch(`/productos/${id}`, { method: 'PATCH', body: data }),

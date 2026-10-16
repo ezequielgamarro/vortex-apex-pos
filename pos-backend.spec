@@ -16,7 +16,7 @@ if not css_dist.exists():
 # ("app.main:app"), así que recogemos manualmente todo el paquete `app` para
 # que el exe lleve TODOS los routers/modelos/config (los imports dinámicos no
 # los detecta el análisis estático de PyInstaller).
-hiddenimports = collect_submodules('app') + [
+hiddenimports = collect_submodules('app') + collect_submodules('alembic') + [
     'uvicorn.logging',
     'uvicorn.loops',
     'uvicorn.loops.auto',
@@ -66,6 +66,9 @@ if not licencia_pub.exists():
         "Es necesaria para verificar licencias. Copiala desde tools_licencia/.\n"
     )
 datas.append((str(licencia_pub), 'app'))
+
+# Migraciones de Alembic: se cargan como ARCHIVOS (no son un paquete importable).
+datas.append(('app/migraciones', 'app/migraciones'))
 
 # ---------------------------------------------------------------------------
 # GUARDA DE SEGURIDAD: la LLAVE PRIVADA nunca debe empaquetarse

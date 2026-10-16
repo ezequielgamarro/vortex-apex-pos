@@ -154,8 +154,39 @@ def activar_licencia(
             detail=f"Código de activación rechazado: {resultado.motivo}",
         )
 
-    # Código válido: aplicar fecha/gracia FIRMADAS (no las que diga el usuario).
     lic = db.query(Licencia).first()
+    codigo = data.codigo_firmado.strip()
+
+    # Pegar dos veces el mismo código no es un error: queda como está.
+    if lic is not None and (lic.codigo_activacion or "").strip() == codigo:
+        return _estado_out(
+            evaluar(db, persistir_ping=True), mensaje="Esa licencia ya estaba activa."
+        )
+
+    # ANTI-REPETICIÓN: un código viejo no puede volver a aplicarse.
+    if lic is not None:
+        if resultado.serie is not None:
+            if resultado.serie <= int(lic.ultimo_serial or 0):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        "Código de activación rechazado: es más viejo que la "
+                        "licencia ya aplicada. Pedí uno nuevo."
+                    ),
+                )
+        elif lic.codigo_activacion:
+            # Código sin serie (formato original): al menos que no retroceda.
+            vigente = datetime.combine(resultado.fecha_vencimiento, datetime.min.time())
+            if lic.fecha_vencimiento is not None and vigente < lic.fecha_vencimiento:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        "Código de activación rechazado: vence antes que la "
+                        "licencia actual."
+                    ),
+                )
+
+    # Código válido: aplicar fecha/gracia FIRMADAS (no las que diga el usuario).
     if lic is None:
         lic = Licencia(id=1)
         db.add(lic)
@@ -167,6 +198,11 @@ def activar_licencia(
         resultado.fecha_vencimiento, datetime.min.time()
     )
     lic.dias_gracia = int(resultado.dias_gracia or 0)
+    # Se guarda el código firmado: desde ahora el vencimiento se verifica contra
+    # la firma, no contra las columnas de arriba.
+    lic.codigo_activacion = codigo
+    if resultado.serie is not None:
+        lic.ultimo_serial = resultado.serie
     lic.estado = "activa"
     lic.ultimo_ping = now_utc()
     lic.actualizado_en = now_utc()

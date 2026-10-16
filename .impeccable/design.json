@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-16T00:00:00Z",
+  "title": "Design System: Vortex Apex POS",
+  "extensions": {
+    "colorMeta": {
+      "violeta-apex": { "role": "primary", "displayName": "Violeta Apex", "canonical": "#6246ea", "tonalRamp": ["#1d1450", "#2e1f7a", "#4330ad", "#6246ea", "#8470f0", "#a898ff", "#cdc4ff", "#ece8ff"] },
+      "violeta-claro": { "role": "primary", "displayName": "Violeta Claro (acento en oscuro)", "canonical": "#a898ff", "tonalRamp": ["#1d1450", "#2e1f7a", "#4330ad", "#6246ea", "#8470f0", "#a898ff", "#cdc4ff", "#ece8ff"] },
+      "carbon-rail": { "role": "secondary", "displayName": "Carbón del Rail", "canonical": "#21222e", "tonalRamp": ["#0f1017", "#171822", "#21222e", "#2b2c34", "#44455a", "#6b6c84", "#a1a2b8", "#d4d5e2"] },
+      "coral-peligro": { "role": "tertiary", "displayName": "Coral Peligro", "canonical": "#cd343c", "tonalRamp": ["#3b0b0e", "#650f15", "#8f1a21", "#cd343c", "#e45858", "#f87171", "#fbaaaa", "#fde0e0"] },
+      "verde-exito": { "role": "tertiary", "displayName": "Verde Éxito", "canonical": "#15803d", "tonalRamp": ["#052e16", "#0a4a24", "#106b33", "#15803d", "#22a355", "#4ade80", "#9af0b8", "#dcfce7"] },
+      "ambar-aviso": { "role": "tertiary", "displayName": "Ámbar Aviso", "canonical": "#b45309", "tonalRamp": ["#3a1a04", "#5f2c06", "#8a4208", "#b45309", "#d97706", "#fbbf24", "#fde08a", "#fef3c7"] },
+      "bruma-fondo": { "role": "neutral", "displayName": "Bruma de Fondo", "canonical": "#f3f3f9", "tonalRamp": ["#161622", "#343548", "#5e5f78", "#8c8da6", "#bebfd2", "#e0e0ee", "#f3f3f9", "#ffffff"] },
+      "noche-fondo": { "role": "neutral", "displayName": "Noche de Fondo", "canonical": "#0f1017", "tonalRamp": ["#0f1017", "#13141d", "#191a25", "#1e1f2b", "#303144", "#4a4b63", "#7d7e98", "#c0c1d2"] }
+    },
+    "typographyMeta": {
+      "marca": { "displayName": "Marca (Unbounded)", "purpose": "Frase de bienvenida y titulares de pantallas sin sesión." },
+      "titulo-pantalla": { "displayName": "Título de pantalla", "purpose": "Título del encabezado de cada pantalla interna, en Unbounded." },
+      "titulo-modal": { "displayName": "Título de modal", "purpose": "Títulos de modales en Onest." },
+      "cuerpo": { "displayName": "Cuerpo", "purpose": "Texto, celdas y controles; cifras tabulares; base 14 px." },
+      "etiqueta": { "displayName": "Etiqueta", "purpose": "Etiquetas de campo y badges." },
+      "encabezado-tabla": { "displayName": "Encabezado de tabla", "purpose": "Cabeceras de tabla en mayúsculas pequeñas." }
+    },
+    "shadows": [
+      { "name": "pos-card", "value": "0 1px 2px rgb(var(--pos-shadow) / calc(var(--pos-shadow-a) * 0.6)), 0 8px 24px -12px rgb(var(--pos-shadow) / var(--pos-shadow-a))", "purpose": "Tarjetas en dos capas, difusas." },
+      { "name": "btn-primary", "value": "inset 0 1px 0 rgb(255 255 255 / 0.18), 0 6px 14px -8px rgb(0 0 0 / 0.5)", "purpose": "Luz superior del botón primario." },
+      { "name": "pos-modal", "value": "0 24px 60px -20px rgb(0 0 0 / 0.45)", "purpose": "Mayor elevación, solo modales." },
+      { "name": "focus-ring", "value": "0 0 0 3px rgb(var(--pos-brand) / 0.22)", "purpose": "Anillo de foco de campos." }
+    ],
+    "motion": [
+      { "name": "ease-out-expo", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Entradas de modal, aviso y hover de tarjeta de producto; sin rebote." },
+      { "name": "state-fast", "value": "0.12s - 0.15s ease", "purpose": "Cambios de color, relleno y brillo en hover." },
+      { "name": "enter", "value": "0.2s - 0.22s", "purpose": "Duración de animate-pop-in y animate-toast-in." },
+      { "name": "reduced-motion", "value": "0.01ms", "purpose": "Duración forzada bajo prefers-reduced-motion: reduce." }
+    ],
+    "breakpoints": [
+      { "name": "lg", "value": "1024px" },
+      { "name": "catalogo-2-cols", "value": "22rem (container)" },
+      { "name": "catalogo-6-cols", "value": "70rem (container)" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón primario",
+      "kind": "button",
+      "refersTo": "btn-primary",
+      "description": "Acción principal: cobrar, guardar, confirmar.",
+      "html": "<button class=\"ds-btn-primary\">Cobrar</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border: 0; border-radius: 12px; font: 600 0.875rem/1.25rem Onest, system-ui, sans-serif; color: #fff; background: #6246ea; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 6px 14px -8px rgb(0 0 0 / 0.5); cursor: pointer; transition: filter 0.15s ease, transform 0.08s ease; } .ds-btn-primary:hover { filter: brightness(1.1); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 2px solid #6246ea; outline-offset: 2px; }"
+    },
+    {
+      "name": "Botón secundario",
+      "kind": "button",
+      "refersTo": "btn-secondary",
+      "description": "Acción alternativa o cancelar.",
+      "html": "<button class=\"ds-btn-secondary\">Cancelar</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 12px; border: 1px solid #e0e0ee; background: #fff; color: #161622; font: 600 0.875rem/1.25rem Onest, system-ui, sans-serif; cursor: pointer; transition: background-color 0.15s ease; } .ds-btn-secondary:hover { background: rgb(224 224 238 / 0.45); } .ds-btn-secondary:focus-visible { outline: 2px solid #6246ea; outline-offset: 2px; }"
+    },
+    {
+      "name": "Botón de peligro",
+      "kind": "button",
+      "refersTo": "btn-danger",
+      "description": "Confirmación de acción destructiva dentro de un modal.",
+      "html": "<button class=\"ds-btn-danger\">Eliminar</button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border: 0; border-radius: 12px; background: #cd343c; color: #fff; font: 600 0.875rem/1.25rem Onest, system-ui, sans-serif; cursor: pointer; transition: filter 0.15s ease; } .ds-btn-danger:hover { filter: brightness(1.08); } .ds-btn-danger:focus-visible { outline: 2px solid #6246ea; outline-offset: 2px; }"
+    },
+    {
+      "name": "Campo de formulario",
+      "kind": "input",
+      "refersTo": "form-input",
+      "description": "Campo de texto con etiqueta superior; foco con anillo violeta.",
+      "html": "<label class=\"ds-label\" for=\"ds-in\">Producto</label><input id=\"ds-in\" class=\"ds-input\" placeholder=\"Código o nombre\">",
+      "css": ".ds-label { display: block; margin-bottom: 6px; font: 600 0.75rem/1rem Onest, system-ui, sans-serif; color: #161622; } .ds-input { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 12px; border: 1px solid #e0e0ee; background: #fff; color: #161622; font: 400 0.875rem/1.25rem Onest, system-ui, sans-serif; box-shadow: inset 0 1px 2px rgb(24 24 60 / 0.03); transition: border-color 0.15s ease, box-shadow 0.15s ease; } .ds-input:hover { border-color: rgb(52 53 72 / 0.35); } .ds-input:focus { outline: none; border-color: #6246ea; box-shadow: 0 0 0 3px rgb(98 70 234 / 0.22); }"
+    },
+    {
+      "name": "Rail de navegación",
+      "kind": "nav",
+      "refersTo": "rail",
+      "description": "Navegación carbón permanente con ítem activo violeta; gesto de marca.",
+      "html": "<nav class=\"ds-rail\"><a class=\"ds-rail-link\" href=\"#\">Caja</a><a class=\"ds-rail-link\" href=\"#\" aria-current=\"page\">Punto de Venta</a><a class=\"ds-rail-link\" href=\"#\">Inventario</a></nav>",
+      "css": ".ds-rail { width: 256px; padding: 16px 12px; display: grid; gap: 4px; background: #21222e; color: #bebfd2; border-right: 1px solid rgb(255 255 255 / 0.06); } .ds-rail-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; font: 500 0.875rem/1.25rem Onest, system-ui, sans-serif; color: #bebfd2; text-decoration: none; transition: background-color 0.15s ease, color 0.15s ease; } .ds-rail-link:hover { background: rgb(255 255 255 / 0.06); color: #fff; } .ds-rail-link[aria-current='page'] { background: rgb(98 70 234 / 0.22); color: #fff; box-shadow: inset 0 0 0 1px rgb(98 70 234 / 0.35); } .ds-rail-link:focus-visible { outline: 2px solid #a898ff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Badges",
+      "kind": "chip",
+      "refersTo": "badge-primary",
+      "description": "Píldora de estado: primary, success, danger, warning y neutral.",
+      "html": "<span class=\"ds-badge ds-badge-primary\">Activo</span> <span class=\"ds-badge ds-badge-success\">Pagado</span> <span class=\"ds-badge ds-badge-danger\">Anulado</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; font: 600 0.75rem/1rem Onest, system-ui, sans-serif; } .ds-badge-primary { background: rgb(98 70 234 / 0.14); color: #6246ea; } .ds-badge-success { background: rgb(21 128 61 / 0.14); color: #15803d; } .ds-badge-danger { background: rgb(205 52 60 / 0.14); color: #cd343c; }"
+    },
+    {
+      "name": "Tarjeta",
+      "kind": "card",
+      "refersTo": "pos-card",
+      "description": "Superficie base con borde fino y sombra difusa de dos capas; título en Unbounded.",
+      "html": "<div class=\"ds-card\"><h4 class=\"ds-card-title\">Punto de Venta</h4><p>Total de la jornada</p></div>",
+      "css": ".ds-card { padding: 20px; border-radius: 16px; background: #fff; border: 1px solid rgb(224 224 238 / 0.7); box-shadow: 0 1px 2px rgb(24 24 60 / 0.048), 0 8px 24px -12px rgb(24 24 60 / 0.08); color: #343548; font: 400 0.875rem/1.5 Onest, system-ui, sans-serif; } .ds-card-title { margin: 0 0 8px; font: 600 1rem/1.5 Unbounded, Onest, system-ui, sans-serif; letter-spacing: -0.01em; color: #161622; }"
+    },
+    {
+      "name": "Tabla",
+      "kind": "custom",
+      "refersTo": "pos-card",
+      "description": "Tabla compacta con encabezado tenue en mayúsculas pequeñas y hover violeta suave.",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Producto</th><th>Total</th></tr></thead><tbody><tr><td>Alfajor</td><td>$ 1.200</td></tr><tr><td>Gaseosa</td><td>$ 2.400</td></tr></tbody></table>",
+      "css": ".ds-table { min-width: 280px; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; } .ds-table thead { background: rgb(224 224 238 / 0.3); } .ds-table th { padding: 12px 16px; text-align: left; font: 600 0.7rem/1rem Onest, system-ui, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: rgb(52 53 72 / 0.8); border-bottom: 1px solid rgb(224 224 238 / 0.8); } .ds-table td { padding: 12px 16px; font: 400 0.875rem/1.25rem Onest, system-ui, sans-serif; color: #343548; border-bottom: 1px solid rgb(224 224 238 / 0.45); } .ds-table tbody tr { transition: background-color 0.12s ease; } .ds-table tbody tr:hover { background: rgb(98 70 234 / 0.05); } .ds-table tbody tr:last-child td { border-bottom: 0; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El Mostrador Carbón",
+    "overview": "Un mostrador de trabajo bien terminado: superficies calmas con un matiz violeta, texto legible durante ocho horas y una sola pieza con carácter, el rail de navegación carbón. Todo lo demás se retira para que el cobro sea rápido. La paleta nace del logo (violeta, carbón, un punto coral) y los neutros llevan un matiz violeta en lugar de grises puros.\n\nEl único gesto de marca es la combinación de dos cosas: el rail carbón con el ítem activo en violeta, y los títulos de pantalla en tipografía extendida (Unbounded), que hace eco del wordmark. Fuera de eso el sistema es deliberadamente sobrio: tarjetas planas con borde fino, un solo violeta de acento, color semántico solo para estado.\n\nFunciona en claro y oscuro con los mismos nombres de token. El rail no cambia de naturaleza entre temas: es carbón siempre. Todo es local: fuentes e íconos viajan con la app, sin CDN.",
+    "keyCharacteristics": [
+      "Rail carbón permanente; el violeta aparece en el ítem activo, el botón primario, el foco y el acento de texto.",
+      "Títulos de pantalla en Unbounded; el resto en Onest con cifras tabulares.",
+      "Tarjetas y modales con borde fino de 1px y sombra difusa, nunca sombra dura.",
+      "Interfaz escalada a 14 px base (html al 87,5 %), todo en rem.",
+      "Foco visible siempre; movimiento corto y respetuoso de prefers-reduced-motion."
+    ],
+    "rules": [
+      { "name": "The Rail Is Always Charcoal Rule", "body": "El rail y el panel de marca de login son carbón en claro y en oscuro; no se invierten con el tema.", "section": "colors" },
+      { "name": "The One Violet Rule", "body": "El violeta es el único acento cromático. Aparece en el ítem activo del rail, el botón primario, el foco, selección y badges primarios; los demás colores son semánticos y solo comunican estado.", "section": "colors" },
+      { "name": "The Token Only Rule", "body": "Ningún color se escribe a mano en una pantalla: se usan las utilidades pos-* para que el cambio de tema funcione sin tocar el HTML.", "section": "colors" },
+      { "name": "The Extended Voice Rule", "body": "Unbounded se usa solo en títulos de pantalla y la frase de marca (clase font-marca); nunca en cuerpo, botones, datos ni cifras.", "section": "typography" },
+      { "name": "The Tabular Figures Rule", "body": "Las cifras son de ancho fijo en todo el cuerpo para que precios y totales se alineen.", "section": "typography" },
+      { "name": "The Soft Lift Rule", "body": "La elevación es difusa y se sube un nivel solo para modales; las tarjetas de producto añaden una sombra de hover y subida de 2px, y nada más se levanta.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar las utilidades pos-* y variables --pos-* para todo color, para que claro y oscuro funcionen sin editar el HTML.",
+      "Do mantener el rail carbón en ambos temas, con el ítem activo en violeta al 22 % y aria-current=\"page\".",
+      "Do poner los títulos de pantalla en Unbounded (font-marca) y todo lo demás en Onest.",
+      "Do usar 12px de radio en controles y 16px en tarjetas y modales.",
+      "Do verificar contraste AA en claro y oscuro y conservar el contorno de foco de 2px.",
+      "Do usar íconos SVG locales; nada de CDN ni fuentes remotas."
+    ],
+    "donts": [
+      "Don't usar un segundo color de acento; los colores semánticos son solo estado.",
+      "Don't escribir colores en hex dentro de las pantallas ni usar grises puros: los neutros llevan matiz violeta.",
+      "Don't usar Unbounded en cuerpo, botones, tablas ni cifras.",
+      "Don't invertir el rail a claro en el tema claro.",
+      "Don't usar sombras duras desplazadas ni animaciones con rebote.",
+      "Don't depender de CDN, scripts en línea ni manejadores en línea (la CSP los bloquea)."
+    ]
+  }
+}

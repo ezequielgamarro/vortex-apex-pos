@@ -202,9 +202,7 @@ function inyectarAyuda() {
   btn.id = 'atajos-toggle';
   btn.setAttribute('aria-label', 'Ver atajos de teclado');
   btn.title = 'Atajos de teclado (F1..F8, Esc)';
-  btn.className =
-    'p-2 rounded-lg text-pos-text-body hover:bg-pos-secondary/40 transition-colors ' +
-    'font-bold leading-none';
+  btn.className = 'icon-btn font-bold leading-none';
   btn.textContent = '?';
 
   // Panel de la lista (oculto por defecto), anclado bajo el botón a la derecha.
